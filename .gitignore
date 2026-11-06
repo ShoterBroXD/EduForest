@@ -1,0 +1,10 @@
+@"
+*.csv
+*.xlsx
+/data/
+/go/bin/
+*.gob
+*.exe
+.env
+node_modules/
+"@ | Out-File -Encoding utf8 .gitignore
