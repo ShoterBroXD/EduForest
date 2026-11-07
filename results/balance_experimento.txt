@@ -1,0 +1,15 @@
+# Elección del parámetro -balance (20 árboles, entrenamiento 2021-2023, prueba 2024)
+# balance = 0: bootstrap normal | balance = 1: todas las clases pesan igual
+objetivo  balance  exactitud  exactitud_balanceada  f1_macro
+riesgo    0.0      0.925      0.380                 0.398
+riesgo    0.3      0.894      0.514                 0.508
+riesgo    0.5      0.830      0.614                 0.494
+riesgo    0.7      0.714      0.672                 0.438
+riesgo    1.0      0.400      0.680                 0.287
+logro     0.0      0.805      0.526                 0.565
+logro     0.3      0.805      0.600                 0.629
+logro     0.5      0.790      0.633                 0.637
+logro     0.7      0.740      0.667                 0.616
+logro     1.0      0.590      0.664                 0.520
+# Se eligió 0.5: mejor F1 macro en logro y, en riesgo, el mejor equilibrio entre
+# detectar las clases raras (recall) y no inundar de falsas alarmas.

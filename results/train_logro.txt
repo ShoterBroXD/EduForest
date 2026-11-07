@@ -1,0 +1,41 @@
+# Corrida en el entorno de prueba (2 núcleos). Las métricas no dependen del hardware; los tiempos sí.
+Datos: 2205115 filas leídas, 1021419 muestras tras la limpieza (4.153s)
+Objetivo: logro | entrenamiento: 773206 (años < 2024) | prueba: 248213 (año 2024)
+Clases en entrenamiento:  Logro alto 80.7%  Logro medio 13.6%  Logro bajo 5.7%
+Discretización en histogramas (64 intervalos máx.): 252ms
+Bosque: 100 árboles, profundidad 14, bootstrap de 773206 filas, balance=0.50
+
+Entrenamiento concurrente (2 workers): 12.995s
+Predicción de 248213 filas: 2.982s
+
+Clase          Precisión    Recall        F1   Soporte
+Logro alto         0.873     0.871     0.872    180409
+Logro medio        0.610     0.641     0.625     50138
+Logro bajo         0.453     0.400     0.425     17666
+
+Exactitud: 0.791 | Exactitud balanceada: 0.637 | F1 macro: 0.641
+
+Matriz de confusión (filas = real, columnas = predicha):
+                  Logro alto   Logro medio    Logro bajo
+Logro alto            157083         16993          6333
+Logro medio            15800         32132          2206
+Logro bajo              7078          3519          7069
+
+Importancia de las features (reducción de Gini):
+  alumnos_grupo             17.38%
+  alumnos_servicio          12.24%
+  edad                      11.91%
+  pct_atraso                 9.92%
+  anio                       9.66%
+  pct_atraso_servicio        8.66%
+  gestion                    7.64%
+  no_logro_servicio_prev     7.16%
+  secundaria                 6.60%
+  pct_sin_dni                2.74%
+  pct_extranjero             2.57%
+  retiro_servicio_prev       1.55%
+  pct_mujer                  1.45%
+  tipo_disca_registrado      0.29%
+  pct_discapacidad           0.24%
+
+Modelo guardado en ../models/logro.gob
