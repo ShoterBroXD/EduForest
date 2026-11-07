@@ -21,8 +21,6 @@ import pandas as pd
 
 BLUE, INK, INK2, MUTED, GRID, SHADE = "#2a78d6", "#0b0b0b", "#52514e", "#8a8984", "#e6e5e1", "#f4f3f0"
 
-# Topología del i7-12700H: 6 núcleos P con hyperthreading (12 hilos) + 8 núcleos E.
-# Si se corre en otra máquina, ajustar o pasar --sin-zonas.
 ZONAS = [(0.5, 6.5, "núcleos P\n(1 hilo c/u)"), (6.5, 12.5, "hyperthreading\nen núcleos P"), (12.5, 20.5, "núcleos E")]
 
 
