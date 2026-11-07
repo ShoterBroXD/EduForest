@@ -1,5 +1,5 @@
-@"
 *.csv
+!results/*.csv
 *.xlsx
 /data/
 /go/bin/
@@ -7,4 +7,5 @@
 *.exe
 .env
 node_modules/
-"@ | Out-File -Encoding utf8 .gitignore
+__pycache__/
+.ipynb_checkpoints/
