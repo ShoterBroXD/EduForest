@@ -1,0 +1,29 @@
+flowchart TB
+  CSV["<b>datosabiertos.gob.pe</b> · SIAGIE 2021-2024 · 4 CSV · 2.2 M filas"]
+  subgraph Coord["Nodo coordinador (Go)"]
+    direction LR
+    L["Carga concurrente<br/>lectores → canal → parseadores"] --> P["Limpieza y features<br/>1.02 M muestras · 15 features"] --> B["Discretización<br/>histogramas de 64 intervalos"] --> S["Planificador<br/>canal de árboles pendientes"]
+  end
+  subgraph Nodos["Nodos de entrenamiento · goroutines en PC3, procesos TCP en PC4"]
+    direction LR
+    N1["Nodo 1<br/>worker pool"]
+    N2["Nodo 2<br/>worker pool"]
+    N3["Nodo N<br/>worker pool"]
+  end
+  A["Ensamblado del bosque en el coordinador<br/>Trees[i] + importancia · voto por mayoría"]
+  subgraph Serv["Servicio · PC4 y TB2 (planificado)"]
+    direction LR
+    UI["SPA<br/>riesgo por colegio"] <--> API["API REST / WebSocket<br/>Swagger · JWT · menos de 100 ms"]
+    API <--> DB[("MongoDB<br/>predicciones")]
+    API <--> R[("Redis<br/>caché")]
+  end
+  CSV --> L
+  S --> N1
+  S -- "datos discretizados + números de árbol" --> N2
+  S --> N3
+  N1 --> A
+  N2 -- "árboles serializados (gob)" --> A
+  N3 --> A
+  A -- "modelo .gob" --> API
+  classDef plan fill:#ffffff,stroke:#8a8984,stroke-dasharray:5 4,color:#52514e
+  class API,DB,R,UI plan
