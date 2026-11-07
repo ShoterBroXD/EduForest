@@ -8,13 +8,7 @@ const (
 	NivelPrimaria   = "Primaria"
 	NivelSecundaria = "Secundaria"
 
-	// UmbralLogroMedio: hasta 20% de alumnos sin aprobar es logro medio; más es
-	// logro bajo. 0% es logro alto. Elegido con el EDA: cerca del percentil 75
-	// de la tasa de no aprobación entre los grupos que tienen alguna.
-	UmbralLogroMedio = 0.20
-	// UmbralRiesgoMedio: hasta 10% de retirados es riesgo medio; más es riesgo
-	// alto. 0% es riesgo bajo. Cerca del percentil 90 de la tasa de retiro por
-	// servicio educativo entre los que tienen algún retirado.
+	UmbralLogroMedio  = 0.20
 	UmbralRiesgoMedio = 0.10
 )
 
@@ -31,9 +25,6 @@ var (
 	}
 )
 
-// Dataset son las muestras listas para entrenar. Cada fila de X corresponde a
-// un grupo (servicio educativo x edad x tipo de discapacidad) de un año.
-// Logro y Riesgo son las dos variables objetivo; se entrena un bosque por cada una.
 type Dataset struct {
 	FeatureNames []string
 	X            [][]float64
@@ -57,8 +48,6 @@ type CleanReport struct {
 
 func base(r Record) int { return r.Total - r.Fallecido }
 
-// TasaNoLogro es la proporción de alumnos que no aprobaron (desaprobados o en
-// promoción guiada, más los que requieren recuperación).
 func TasaNoLogro(r Record) float64 {
 	return float64(r.NoAprobado+r.ReqRecuperacion) / float64(base(r))
 }
@@ -90,8 +79,6 @@ func ClaseRiesgo(tasa float64) int {
 	}
 }
 
-// consistent verifica que las situaciones finales sumen el total y que el
-// desglose por sexo también cuadre.
 func consistent(r Record) bool {
 	sit := r.Aprobado + r.NoAprobado + r.Retirado + r.Fallecido +
 		r.ReqRecuperacion + r.Matriculado + r.Posterga
@@ -118,10 +105,6 @@ func (s serviceStats) rate(n int) float64 {
 	return float64(n) / float64(s.Base)
 }
 
-// aggregateServices suma los conteos por servicio educativo y año.
-// Cada worker acumula su parte en un mapa local (sin bloqueos) y al final
-// fusiona ese mapa en el global protegido por un sync.Mutex. Así la sección
-// crítica ocurre una vez por worker y no una vez por fila.
 func aggregateServices(recs []Record, workers int) map[serviceKey]serviceStats {
 	global := make(map[serviceKey]serviceStats)
 	var mu sync.Mutex
@@ -155,14 +138,6 @@ func aggregateServices(recs []Record, workers int) map[serviceKey]serviceStats {
 	return global
 }
 
-// Prepare limpia los registros y construye el Dataset.
-//
-//  1. Limpieza: se quedan Primaria y Secundaria con conteos consistentes.
-//  2. Agregación por servicio (concurrente, con mutex) usando todos los grupos
-//     válidos, para tener el tamaño y la historia completa de cada colegio.
-//  3. Se descartan los grupos con menos de minAlumnos.
-//  4. Construcción de features (concurrente, sin mutex): cada worker escribe
-//     solo en su rango de filas, que no se cruza con el de ningún otro.
 func Prepare(recs []Record, minAlumnos, workers int) (*Dataset, CleanReport) {
 	rep := CleanReport{Input: len(recs)}
 	valid := make([]Record, 0, len(recs)/2)
@@ -224,11 +199,6 @@ func Prepare(recs []Record, minAlumnos, workers int) (*Dataset, CleanReport) {
 	return d, rep
 }
 
-// fillFeatures escribe las features de un grupo en row. Ninguna usa las
-// columnas de resultado del mismo año (aprobados, retirados...), para no
-// filtrar la respuesta al modelo. La historia del servicio sí usa el año
-// anterior: es lo que permite la identificación temprana. En 2021 no hay año
-// anterior y se marca con -1.
 func fillFeatures(row []float64, r Record, services map[serviceKey]serviceStats) {
 	b := float64(base(r))
 	svc := services[keyOf(r)]

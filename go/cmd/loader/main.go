@@ -1,10 +1,3 @@
-// Comando loader: carga los CSV del SIAGIE de forma concurrente, compara el
-// tiempo contra la carga secuencial, limpia los datos y guarda el dataset listo
-// para el Random Forest.
-//
-// Uso (desde la carpeta go/):
-//
-//	go run ./cmd/loader -data ../data/siagie -out ../data/siagie_clean.csv
 package main
 
 import (

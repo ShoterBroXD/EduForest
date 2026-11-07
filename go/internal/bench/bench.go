@@ -1,6 +1,3 @@
-// Package bench mide tiempos con varias corridas y media recortada, calcula
-// speedup y eficiencia, y busca el punto de equilibrio de workers.
-// Es el mismo método que usamos en HydroForest (PC2).
 package bench
 
 import (
@@ -13,8 +10,6 @@ import (
 	"time"
 )
 
-// TrimmedMean descarta los `trim` valores más bajos y los `trim` más altos y
-// promedia el resto, para que una corrida rara no distorsione el resultado.
 func TrimmedMean(values []float64, trim int) float64 {
 	if len(values) == 0 {
 		return 0
@@ -54,9 +49,6 @@ type SweepRow struct {
 	IsEquilibrium bool
 }
 
-// Sweep mide train(w) para cada cantidad de workers y calcula speedup y
-// eficiencia contra baselineSeq (el tiempo secuencial). Imprime cada fila
-// apenas termina para poder seguir una corrida larga.
 func Sweep(workerCounts []int, runs, trim int, baselineSeq float64, train func(workers int)) []SweepRow {
 	rows := make([]SweepRow, 0, len(workerCounts))
 	fmt.Printf("%-8s %-16s %-9s %-11s %s\n", "Workers", "Media recortada", "Speedup", "Eficiencia", "Ganancia marginal")
@@ -77,13 +69,6 @@ func Sweep(workerCounts []int, runs, trim int, baselineSeq float64, train func(w
 	return rows
 }
 
-// MarkEquilibrium marca como punto de equilibrio el menor número de workers
-// cuyo tiempo queda a menos de `threshold` por ciento del mejor tiempo del
-// barrido: agregar más workers desde ahí ya casi no mejora nada.
-//
-// Se compara contra el mejor tiempo y no contra la fila anterior porque en un
-// procesador híbrido (núcleos P y E) y con pocas corridas el tiempo no baja de
-// forma pareja: un salto ruidoso entre 2 y 3 workers no debe cortar el barrido.
 func MarkEquilibrium(rows []SweepRow, threshold float64) int {
 	if len(rows) == 0 {
 		return 0

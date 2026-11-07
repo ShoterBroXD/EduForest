@@ -8,8 +8,6 @@ import (
 	"testing"
 )
 
-// synthetic genera un problema de 3 clases que depende de las features 0 y 1,
-// con la clase 2 rara (~5%), parecido al desbalance del riesgo de deserción.
 func synthetic(n int, seed int64) ([][]float64, []int) {
 	rng := rand.New(rand.NewSource(seed))
 	X := make([][]float64, n)
@@ -31,8 +29,6 @@ func testConfig() Config {
 	return Config{NumTrees: 12, MaxDepth: 8, MinSamplesSplit: 10, NumClasses: 3, MaxFeatures: 2, MaxBins: 32, Seed: 7}
 }
 
-// El resultado no debe depender de cuántos workers entrenan: cada árbol tiene
-// su propia semilla y su propia posición en el bosque.
 func TestConcurrentEqualsSequential(t *testing.T) {
 	X, y := synthetic(3000, 1)
 	tr := NewTrainer(X, y, testConfig(), 4)

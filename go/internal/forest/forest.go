@@ -27,9 +27,6 @@ func (f *Forest) PredictOne(x []float64) int {
 	return argmax(f.Votes(x))
 }
 
-// PredictBatch predice muchas filas repartiéndolas en rangos contiguos, uno
-// por goroutine. Cada goroutine escribe solo en su rango de out, así que no
-// hace falta mutex: los rangos no se cruzan.
 func (f *Forest) PredictBatch(X [][]float64, workers int) []int {
 	out := make([]int, len(X))
 	if workers < 1 {
@@ -67,8 +64,6 @@ func (f *Forest) normalizeImportance() {
 	}
 }
 
-// Save guarda el bosque en disco (formato gob de la librería estándar) para
-// que la API de la PC4 lo cargue sin volver a entrenar.
 func (f *Forest) Save(path string) error {
 	file, err := os.Create(path)
 	if err != nil {

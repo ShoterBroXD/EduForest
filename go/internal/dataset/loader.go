@@ -13,8 +13,6 @@ import (
 	"time"
 )
 
-// ChunkLines es la cantidad de líneas del CSV que viajan juntas por el canal
-// de trabajos. Bloques grandes reducen el costo de sincronización por fila.
 var ChunkLines = 8192
 
 // LoadStats resume una carga.
@@ -25,8 +23,6 @@ type LoadStats struct {
 	Duration time.Duration
 }
 
-// LoadSequential es la línea base: lee los archivos uno tras otro en una sola
-// goroutine. Sirve para medir el speedup de LoadConcurrent.
 func LoadSequential(paths []string) ([]Record, LoadStats, error) {
 	start := time.Now()
 	stats := LoadStats{Files: len(paths)}
@@ -89,18 +85,6 @@ type chunkResult struct {
 	rows, bad int
 }
 
-// LoadConcurrent carga los CSV con un pipeline de tres etapas:
-//
-//  1. Lectores: una goroutine por archivo lee bloques de ChunkLines líneas y
-//     los envía al canal jobs. Así los cuatro archivos se leen en paralelo.
-//  2. Parseadores: un worker pool de `workers` goroutines toma bloques de jobs,
-//     convierte cada línea en un Record y envía el resultado al canal results.
-//  3. Colector: la goroutine que llamó a la función recibe los resultados. Es la
-//     única que escribe en perFile y stats, por eso no necesita mutex.
-//
-// Dos sync.WaitGroup coordinan el cierre: cuando terminan todos los lectores se
-// cierra jobs (los workers salen de su range), y cuando terminan todos los
-// workers se cierra results (el colector sale de su range).
 func LoadConcurrent(paths []string, workers int) ([]Record, LoadStats, error) {
 	if workers < 1 {
 		workers = 1
@@ -148,8 +132,6 @@ func LoadConcurrent(paths []string, workers int) ([]Record, LoadStats, error) {
 		return nil, stats, err
 	}
 
-	// Los bloques llegan en cualquier orden. Se ordenan por archivo y secuencia
-	// para que el resultado sea idéntico al de LoadSequential.
 	total := 0
 	for _, rs := range perFile {
 		sort.Slice(rs, func(a, b int) bool { return rs[a].seq < rs[b].seq })
@@ -167,9 +149,6 @@ func LoadConcurrent(paths []string, workers int) ([]Record, LoadStats, error) {
 	return out, stats, nil
 }
 
-// readChunks lee la cabecera de un archivo y luego lo corta en bloques de
-// ChunkLines líneas completas. Ningún campo del SIAGIE contiene saltos de
-// línea, así que cortar por '\n' nunca parte un registro.
 func readChunks(fileIdx int, path string, jobs chan<- chunk) error {
 	year, err := yearFromPath(path)
 	if err != nil {

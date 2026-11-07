@@ -1,6 +1,3 @@
-// Package forest implementa el Random Forest de EduForest: árboles CART con
-// índice de Gini, bootstrap (opcionalmente balanceado por clase), subconjunto
-// aleatorio de features por nodo y voto por mayoría.
 package forest
 
 import (
@@ -13,20 +10,14 @@ type Config struct {
 	MaxDepth        int
 	MinSamplesSplit int
 	NumClasses      int
-	MaxFeatures     int // features evaluadas por nodo (0 = raíz cuadrada del total)
-	SampleSize      int // filas del bootstrap de cada árbol (0 = tantas como el set de entrenamiento)
-	// Balance controla cuánto se corrige el desbalance de clases en el bootstrap:
-	// 0 = muestreo normal (cada clase pesa según su frecuencia), 1 = todas las
-	// clases aportan lo mismo. Valores intermedios suavizan la corrección: la
-	// probabilidad de cada clase es proporcional a frecuencia^(1-Balance).
-	Balance float64
-	MaxBins int // intervalos por feature para los histogramas (máx. 255)
-	Seed    int64
-	Verbose bool
+	MaxFeatures     int     // features evaluadas por nodo (0 = raíz cuadrada del total)
+	SampleSize      int     // filas del bootstrap de cada árbol (0 = tantas como el set de entrenamiento)
+	Balance         float64 // 0 = bootstrap normal, 1 = clases balanceadas
+	MaxBins         int     // intervalos por feature para los histogramas (máx. 255)
+	Seed            int64
+	Verbose         bool
 }
 
-// Node es un nodo del árbol. Threshold está en la escala original de la
-// feature, así que para predecir no hace falta discretizar nada.
 type Node struct {
 	IsLeaf     bool
 	ClassLabel int
@@ -36,9 +27,7 @@ type Node struct {
 	Right      *Node
 }
 
-// treeBuilder tiene todo lo que necesita un árbol mientras se construye.
-// Cada árbol usa el suyo, así que ninguno de estos campos se comparte entre
-// goroutines. Lo único compartido (bins e y) es de solo lectura.
+// treeBuilder guarda el estado de un árbol en construcción; bins e y se comparten solo para lectura.
 type treeBuilder struct {
 	bins       *Binned
 	y          []int
@@ -66,8 +55,6 @@ func newTreeBuilder(bins *Binned, y []int, cfg Config, seed int64) *treeBuilder 
 	}
 }
 
-// build crece el árbol de forma recursiva sobre las filas idx. idx se
-// reordena en el lugar al particionar, sin crear slices nuevos por nodo.
 func (tb *treeBuilder) build(idx []int, depth int) *Node {
 	k := tb.cfg.NumClasses
 	counts := make([]int, k)
@@ -84,10 +71,7 @@ func (tb *treeBuilder) build(idx []int, depth int) *Node {
 		return leaf
 	}
 
-	// Partición estable: a la izquierda las filas con intervalo <= bin y a la
-	// derecha el resto, sin cambiar su orden relativo. Como idx viene ordenado,
-	// cada hijo sigue ordenado y los recorridos de memoria siguen siendo
-	// secuenciales (mejor uso de la caché del procesador).
+	// Partición estable: idx sigue ordenado y el acceso a memoria es secuencial.
 	col := tb.bins.Cols[f]
 	right := tb.scratch[:0]
 	lo := 0
@@ -113,9 +97,7 @@ func (tb *treeBuilder) build(idx []int, depth int) *Node {
 	}
 }
 
-// bestSplit prueba MaxFeatures features al azar. Por cada una arma el
-// histograma (filas por intervalo y clase) en una pasada y luego evalúa todos
-// los cortes posibles recorriendo los intervalos de izquierda a derecha.
+// bestSplit elige el mejor corte usando un histograma por feature (una pasada por nodo).
 func (tb *treeBuilder) bestSplit(idx []int, total []int) (bestF, bestBin int, bestGain float64) {
 	k := tb.cfg.NumClasses
 	n := len(idx)
@@ -224,12 +206,7 @@ func predictTree(node *Node, x []float64) int {
 	return node.ClassLabel
 }
 
-// bootstrap llena idx con las filas de un árbol, elegidas con reemplazo. Con balance = 0 es el
-// bootstrap clásico. Con balance > 0 primero se sortea la clase (con
-// probabilidad proporcional a frecuencia^(1-balance)) y luego una fila al azar
-// de esa clase: así la clase minoritaria (riesgo alto, 2% de los datos) gana
-// peso. Con balance = 1 es el "Balanced Random Forest" de Chen, Liaw y
-// Breiman (2004).
+// bootstrap sortea filas con reemplazo; con balance > 0 primero sortea la clase.
 func bootstrap(idx []int, n int, byClass [][]int, balance float64, rng *rand.Rand) {
 	if balance <= 0 {
 		for i := range idx {

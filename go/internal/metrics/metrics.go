@@ -1,7 +1,3 @@
-// Package metrics evalúa clasificadores multiclase. Con clases desbalanceadas
-// (94% de riesgo bajo) la exactitud sola engaña: un modelo que siempre dice
-// "riesgo bajo" tendría 94%. Por eso se reportan también recall por clase,
-// F1 macro y exactitud balanceada.
 package metrics
 
 import (

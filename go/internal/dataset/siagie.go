@@ -1,6 +1,3 @@
-// Package dataset carga, limpia y transforma el padrón SIAGIE del MINEDU
-// ("Matriculación y Trayectoria Estudiantil 2021-2024", datosabiertos.gob.pe)
-// en muestras listas para el Random Forest de EduForest.
 package dataset
 
 import (
@@ -11,8 +8,6 @@ import (
 	"strings"
 )
 
-// Record es una fila del CSV original: un servicio educativo (cod_mod + anexo
-// + nivel) desagregado por edad y tipo de discapacidad, con conteos de alumnos.
 type Record struct {
 	Year      int
 	CodMod    int
@@ -39,8 +34,6 @@ type Record struct {
 	Atraso          int
 }
 
-// columns guarda la posición de cada columna. Se arma una vez por archivo a
-// partir de la cabecera, porque 2021-2022 y 2023-2024 no tienen las mismas.
 type columns struct {
 	codMod, anexo, gestion, nivel, edad, tipoDisca  int
 	total, disca, mujer, hombre, venez, extr        int
@@ -80,8 +73,6 @@ func mapColumns(header []string) (*columns, error) {
 	return c, err
 }
 
-// fieldParser convierte campos de texto a números y recuerda el primer error,
-// así parseRecord no necesita un if por cada columna.
 type fieldParser struct {
 	f   []string
 	err error

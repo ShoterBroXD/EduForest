@@ -149,8 +149,6 @@ func TestPrepare(t *testing.T) {
 		if rep != want {
 			t.Fatalf("workers=%d: reporte %+v, se esperaba %+v", workers, rep, want)
 		}
-		// Muestra 3: colegio 100, 2024, edad 8. Su servicio en 2023 sumó 19 alumnos
-		// base (10 + 9 sin contar al fallecido), 0 sin aprobar y 1 retirado.
 		x := d.X[3]
 		if d.CodMod[3] != 100 || d.Year[3] != 2024 {
 			t.Fatalf("orden inesperado: %v %v", d.CodMod, d.Year)

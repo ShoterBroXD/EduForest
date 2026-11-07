@@ -6,10 +6,6 @@ import (
 	"time"
 )
 
-// Trainer prepara una vez lo que comparten todos los árboles: el set
-// discretizado y las filas de cada clase. Después de NewTrainer todo es de
-// solo lectura, por eso varias goroutines pueden construir árboles a la vez
-// sin bloquearse.
 type Trainer struct {
 	Bins    *Binned
 	y       []int
@@ -38,17 +34,10 @@ func NewTrainer(X [][]float64, y []int, cfg Config, workers int) *Trainer {
 
 func (t *Trainer) Config() Config { return t.cfg }
 
-// treeSeed da a cada árbol su propia semilla según su número, no según el
-// worker que lo construye. Así el bosque sale idéntico con 1 o con 20 workers,
-// y se puede comprobar que la versión concurrente no cambia el resultado.
 func (t *Trainer) treeSeed(treeIdx int) int64 {
 	return t.cfg.Seed + int64(treeIdx)*7919
 }
 
-// workspace son los buffers grandes que necesita un árbol (las filas del
-// bootstrap y el buffer de partición). Cada worker crea uno y lo reutiliza en
-// todos sus árboles: sin esto, cada árbol reservaba ~6 MB nuevos y el
-// recolector de basura (GC) competía por CPU con los workers.
 type workspace struct {
 	idx, scratch []int
 	counts       []uint32 // para ordenar idx por conteo
@@ -62,9 +51,6 @@ func (t *Trainer) newWorkspace() *workspace {
 	}
 }
 
-// sortByCounting ordena idx en O(n) contando cuántas veces salió cada fila
-// (counting sort). Es mucho más barato que un ordenamiento por comparación
-// porque los valores son posiciones entre 0 y len(counts)-1.
 func sortByCounting(idx []int, counts []uint32) {
 	clear(counts)
 	for _, v := range idx {
@@ -83,8 +69,6 @@ func (t *Trainer) buildOne(treeIdx int, ws *workspace) (*Node, []float64) {
 	tb := newTreeBuilder(t.Bins, t.y, t.cfg, t.treeSeed(treeIdx))
 	tb.scratch = ws.scratch
 	bootstrap(ws.idx, len(t.y), t.byClass, t.cfg.Balance, tb.rng)
-	// Ordenar las filas sorteadas hace que los histogramas lean la memoria de
-	// forma secuencial en vez de saltar al azar entre 800 mil posiciones.
 	sortByCounting(ws.idx, ws.counts)
 	return tb.build(ws.idx, 0), tb.importance
 }
@@ -116,17 +100,6 @@ func (t *Trainer) TrainSequential() *Forest {
 	return f
 }
 
-// TrainConcurrent reparte los árboles entre `workers` goroutines (worker pool).
-//
-//   - jobs: canal con los números de árbol pendientes. Cada worker toma el
-//     siguiente libre, así los workers rápidos no esperan a los lentos.
-//   - f.Trees[i]: cada árbol se guarda en su propia posición, que ningún otro
-//     worker toca, por eso esa escritura no necesita bloqueo.
-//   - f.Importance: es un acumulador compartido por todos los workers, así que
-//     sumarle la importancia de un árbol es una sección crítica protegida con
-//     sync.Mutex.
-//   - sync.WaitGroup: espera a que todos los workers terminen antes de devolver
-//     el bosque.
 func (t *Trainer) TrainConcurrent(workers int) *Forest {
 	if workers < 1 {
 		workers = 1

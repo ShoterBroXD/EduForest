@@ -6,8 +6,6 @@ import (
 	"strconv"
 )
 
-// WriteCSV guarda el Dataset limpio: identificadores, features y las dos
-// clases. Es la entrada del Random Forest y de los gráficos del informe.
 func WriteCSV(d *Dataset, path string) error {
 	f, err := os.Create(path)
 	if err != nil {

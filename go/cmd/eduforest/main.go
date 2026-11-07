@@ -1,10 +1,3 @@
-// Comando eduforest: entrena y evalúa el Random Forest sobre el SIAGIE.
-//
-// Modos (desde la carpeta go/):
-//
-//	go run ./cmd/eduforest -target riesgo                  entrena, evalúa en 2024 y guarda el modelo
-//	go run ./cmd/eduforest -target riesgo -mode bench      secuencial vs concurrente (speedup)
-//	go run ./cmd/eduforest -target riesgo -mode sweep      barrido de 1 a N workers y punto de equilibrio
 package main
 
 import (
@@ -73,8 +66,6 @@ func main() {
 	recs = nil
 	fmt.Printf("Datos: %d filas leídas, %d muestras tras la limpieza (%v)\n", st.Rows, rep.Kept, time.Since(t).Round(time.Millisecond))
 
-	// 2. Separación temporal: se entrena con los años anteriores y se evalúa en
-	// testYear, como pasaría en la práctica (predecir el año que viene).
 	labels := ds.Riesgo
 	if *target == "logro" {
 		labels = ds.Logro

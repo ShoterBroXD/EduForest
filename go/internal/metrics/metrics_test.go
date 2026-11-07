@@ -9,10 +9,6 @@ import (
 func near(a, b float64) bool { return math.Abs(a-b) < 1e-9 }
 
 func TestEvaluate(t *testing.T) {
-	// 10 muestras, 3 clases. Matriz esperada (filas = real, columnas = predicha):
-	//   clase 0: 4 bien, 1 como clase 1
-	//   clase 1: 2 bien, 1 como clase 0
-	//   clase 2: 1 bien, 1 como clase 1
 	yTrue := []int{0, 0, 0, 0, 0, 1, 1, 1, 2, 2}
 	yPred := []int{0, 0, 0, 0, 1, 1, 1, 0, 2, 1}
 	r := Evaluate(yTrue, yPred, 3)
@@ -49,8 +45,6 @@ func TestEvaluate(t *testing.T) {
 	}
 }
 
-// Un modelo que siempre predice la clase mayoritaria tiene exactitud alta pero
-// F1 macro y exactitud balanceada bajas: por eso se reportan esas métricas.
 func TestMajorityClassIsPenalized(t *testing.T) {
 	yTrue := make([]int, 100)
 	for i := 94; i < 100; i++ {
