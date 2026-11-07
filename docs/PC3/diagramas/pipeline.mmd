@@ -1,0 +1,23 @@
+flowchart LR
+  subgraph Carga["1 · Carga concurrente"]
+    direction TB
+    F1["lector 2021"] & F2["lector 2022"] & F3["lector 2023"] & F4["lector 2024"] --> J(["canal jobs<br/>bloques de 8192 líneas"])
+    J --> W1["parseador 1"] & W2["parseador 2"] & W3["parseador W"]
+    W1 & W2 & W3 --> R(["canal results"])
+    R --> C["colector<br/>una sola goroutine, sin mutex"]
+  end
+  subgraph Prep["2 · Preparación"]
+    direction TB
+    AG["agregación por colegio<br/>mapa local por worker<br/>+ fusión con sync.Mutex"]
+    FE["features por rangos de filas<br/>sin mutex: rangos disjuntos"]
+    AG --> FE
+  end
+  subgraph Ent["3 · Entrenamiento"]
+    direction TB
+    T(["canal de árboles<br/>0 … 99"])
+    T --> G1["worker 1"] & G2["worker 2"] & G3["worker W"]
+    G1 & G2 & G3 --> FO["Trees[i]: posición propia, sin mutex<br/>Importancia: sync.Mutex"]
+  end
+  C --> AG
+  FE --> T
+  FO --> M["modelo .gob<br/>+ predicción en lote"]
