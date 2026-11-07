@@ -1,0 +1,41 @@
+# Corrida en el entorno de prueba (2 núcleos). Las métricas no dependen del hardware; los tiempos sí.
+Datos: 2205115 filas leídas, 1021419 muestras tras la limpieza (6.762s)
+Objetivo: riesgo | entrenamiento: 773206 (años < 2024) | prueba: 248213 (año 2024)
+Clases en entrenamiento:  Riesgo bajo 94.5%  Riesgo medio 3.5%  Riesgo alto 1.9%
+Discretización en histogramas (64 intervalos máx.): 257ms
+Bosque: 100 árboles, profundidad 14, bootstrap de 773206 filas, balance=0.50
+
+Entrenamiento concurrente (2 workers): 12.829s
+Predicción de 248213 filas: 3.216s
+
+Clase          Precisión    Recall        F1   Soporte
+Riesgo bajo        0.960     0.855     0.905    229897
+Riesgo medio       0.238     0.546     0.332     12661
+Riesgo alto        0.174     0.447     0.251      5655
+
+Exactitud: 0.830 | Exactitud balanceada: 0.616 | F1 macro: 0.496
+
+Matriz de confusión (filas = real, columnas = predicha):
+                 Riesgo bajo  Riesgo medio   Riesgo alto
+Riesgo bajo           196543         21724         11630
+Riesgo medio            5386          6918           357
+Riesgo alto             2755           370          2530
+
+Importancia de las features (reducción de Gini):
+  alumnos_grupo             15.36%
+  pct_atraso                11.10%
+  anio                      10.46%
+  alumnos_servicio          10.17%
+  retiro_servicio_prev      10.08%
+  edad                       9.10%
+  pct_sin_dni                7.01%
+  no_logro_servicio_prev     6.46%
+  pct_atraso_servicio        6.09%
+  pct_extranjero             6.04%
+  secundaria                 2.98%
+  gestion                    2.53%
+  pct_mujer                  2.42%
+  pct_discapacidad           0.11%
+  tipo_disca_registrado      0.10%
+
+Modelo guardado en ../models/riesgo.gob
