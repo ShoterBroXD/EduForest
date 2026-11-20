@@ -1,0 +1,118 @@
+# EduForest PC4: API coordinador + 4 nodos de cómputo + MongoDB + Redis.
+#
+#   docker compose up --build -d          levanta todo
+#   docker compose logs -f api nodo1      sigue los logs
+#   docker compose stop nodo3             simula la caída de un nodo
+#   docker compose --profile bench run --rm bench   benchmark sharding vs replicado
+#
+# Swagger: http://localhost:8080/swagger/   (usuario admin / admin123)
+name: eduforest
+
+x-eduforest: &eduforest
+  build:
+    context: ./go
+  image: eduforest:pc4
+
+x-nodo: &nodo
+  <<: *eduforest
+  command: ["/app/node"]
+  restart: unless-stopped
+  cpus: ${NODE_CPUS:-4} # cada nodo se comporta como una máquina de 4 núcleos
+  networks: [cluster]
+
+services:
+  mongo:
+    image: mongo:8.0
+    container_name: eduforest-mongo
+    restart: unless-stopped
+    ports: ["27017:27017"]
+    volumes: [mongo-data:/data/db]
+    networks: [datos]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: eduforest-redis
+    restart: unless-stopped
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports: ["6379:6379"]
+    networks: [datos]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  nodo1:
+    <<: *nodo
+    container_name: eduforest-nodo1
+    hostname: nodo1
+    environment: { NODE_NAME: nodo1, NODE_ADDR: "0.0.0.0:9100" }
+  nodo2:
+    <<: *nodo
+    container_name: eduforest-nodo2
+    hostname: nodo2
+    environment: { NODE_NAME: nodo2, NODE_ADDR: "0.0.0.0:9100" }
+  nodo3:
+    <<: *nodo
+    container_name: eduforest-nodo3
+    hostname: nodo3
+    environment: { NODE_NAME: nodo3, NODE_ADDR: "0.0.0.0:9100" }
+  nodo4:
+    <<: *nodo
+    container_name: eduforest-nodo4
+    hostname: nodo4
+    environment: { NODE_NAME: nodo4, NODE_ADDR: "0.0.0.0:9100" }
+
+  api:
+    <<: *eduforest
+    container_name: eduforest-api
+    command: ["/app/api"]
+    restart: unless-stopped
+    ports: ["8080:8080"]
+    environment:
+      API_ADDR: ":8080"
+      NODES: nodo1:9100,nodo2:9100,nodo3:9100,nodo4:9100
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB: eduforest
+      REDIS_ADDR: redis:6379
+      DATA_DIR: /data/siagie
+      MODELS_DIR: /models
+      JWT_SECRET: ${JWT_SECRET:-cambia-este-secreto}
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+    volumes:
+      - ./data/siagie:/data/siagie:ro
+      - ./models:/models
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      nodo1: { condition: service_started }
+      nodo2: { condition: service_started }
+      nodo3: { condition: service_started }
+      nodo4: { condition: service_started }
+    networks: [cluster, datos]
+
+  bench:
+    <<: *eduforest
+    profiles: ["bench"]
+    command: ["/app/clusterbench", "-data", "/data/siagie", "-results", "/results", "-runs", "3"]
+    environment:
+      NODES: nodo1:9100,nodo2:9100,nodo3:9100,nodo4:9100
+    volumes:
+      - ./data/siagie:/data/siagie:ro
+      - ./results:/results
+    depends_on: [nodo1, nodo2, nodo3, nodo4]
+    networks: [cluster]
+
+# Dos redes: los nodos solo ven a la API; las bases de datos solo ven a la API.
+networks:
+  cluster:
+  datos:
+
+volumes:
+  mongo-data:

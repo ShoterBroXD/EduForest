@@ -1,0 +1,862 @@
+{
+  "info": {
+    "name": "EduForest API (PC4)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Colección de la API coordinador de EduForest. Ejecuta primero Login: guarda el token en la variable {{token}}. Cada petición comprueba el status y que la respuesta llegue en menos de 100 ms (salvo el inicio del entrenamiento, que es asíncrono)."
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "entrenamientoId",
+      "value": ""
+    },
+    {
+      "key": "codMod",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Autenticación",
+      "item": [
+        {
+          "name": "Salud",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/salud",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "salud"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"admin\",\n  \"clave\": \"admin123\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));",
+                  "const d = pm.response.json();",
+                  "pm.collectionVariables.set(\"token\", d.token);",
+                  "pm.test(\"Devuelve un JWT\", () => pm.expect(d.token.split(\".\").length).to.eql(3));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login con clave incorrecta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"admin\",\n  \"clave\": \"mala\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Quién soy",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/yo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "yo"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sin token (debe fallar)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cluster",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cluster"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear usuario analista",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "usuarios"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"analista1\",\n  \"clave\": \"clave123\",\n  \"rol\": \"analista\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Creado o ya existía\", () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Clúster",
+      "item": [
+        {
+          "name": "Estado de los nodos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cluster",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cluster"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));",
+                  "pm.test(\"Hay nodos activos\", () => pm.expect(pm.response.json().activos).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Estado en vivo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cluster?en_vivo=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cluster"
+              ],
+              "query": [
+                {
+                  "key": "en_vivo",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Historial de métricas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cluster/metricas?limite=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cluster",
+                "metricas"
+              ],
+              "query": [
+                {
+                  "key": "limite",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Entrenamiento",
+      "item": [
+        {
+          "name": "Entrenar (sharding)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/entrenamientos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "entrenamientos"
+              ]
+            },
+            "description": "Es asíncrono: el progreso llega por el WebSocket /ws?token=... Espera unos segundos antes de consultar el detalle.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"objetivo\": \"riesgo\",\n  \"modo\": \"sharding\",\n  \"arboles\": 100\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Aceptado (202) u ocupado (409)\", () => pm.expect(pm.response.code).to.be.oneOf([202, 409]));",
+                  "if (pm.response.code === 202) pm.collectionVariables.set(\"entrenamientoId\", pm.response.json().id);",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Entrenar (replicado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/entrenamientos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "entrenamientos"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"objetivo\": \"riesgo\",\n  \"modo\": \"replicado\",\n  \"arboles\": 100\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Aceptado (202) u ocupado (409)\", () => pm.expect(pm.response.code).to.be.oneOf([202, 409]));",
+                  "if (pm.response.code === 202) pm.collectionVariables.set(\"entrenamientoId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Modo inválido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/entrenamientos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "entrenamientos"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modo\": \"otro\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar entrenamientos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/entrenamientos?limite=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "entrenamientos"
+              ],
+              "query": [
+                {
+                  "key": "limite",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalle del entrenamiento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/entrenamientos/{{entrenamientoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "entrenamientos",
+                "{{entrenamientoId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Modelos cargados",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/modelos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "modelos"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Predicción y colegios",
+      "item": [
+        {
+          "name": "Predecir riesgo de un grupo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/predicciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "predicciones"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"objetivo\": \"riesgo\",\n  \"variables\": {\n    \"anio\": 2024,\n    \"secundaria\": 1,\n    \"gestion\": 0,\n    \"edad\": 15,\n    \"alumnos_grupo\": 28,\n    \"pct_mujer\": 0.5,\n    \"pct_discapacidad\": 0,\n    \"tipo_disca_registrado\": 0,\n    \"pct_extranjero\": 0.04,\n    \"pct_sin_dni\": 0,\n    \"pct_atraso\": 0.25,\n    \"alumnos_servicio\": 320,\n    \"pct_atraso_servicio\": 0.18,\n    \"no_logro_servicio_prev\": 0.12,\n    \"retiro_servicio_prev\": 0.03\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));",
+                  "pm.test(\"Trae etiqueta y probabilidades\", () => { const d = pm.response.json(); pm.expect(d.etiqueta).to.be.a(\"string\"); pm.expect(d.probabilidades).to.be.an(\"object\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Predecir otra vez (sale de Redis)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/predicciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "predicciones"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"objetivo\": \"riesgo\",\n  \"variables\": {\n    \"anio\": 2024,\n    \"secundaria\": 1,\n    \"gestion\": 0,\n    \"edad\": 15,\n    \"alumnos_grupo\": 28,\n    \"pct_mujer\": 0.5,\n    \"pct_discapacidad\": 0,\n    \"tipo_disca_registrado\": 0,\n    \"pct_extranjero\": 0.04,\n    \"pct_sin_dni\": 0,\n    \"pct_atraso\": 0.25,\n    \"alumnos_servicio\": 320,\n    \"pct_atraso_servicio\": 0.18,\n    \"no_logro_servicio_prev\": 0.12,\n    \"retiro_servicio_prev\": 0.03\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));",
+                  "pm.test(\"Fuente cache\", () => pm.expect(pm.response.json().fuente).to.eql(\"cache\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ranking de colegios en riesgo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/colegios?objetivo=riesgo&limite=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "colegios"
+              ],
+              "query": [
+                {
+                  "key": "objetivo",
+                  "value": "riesgo"
+                },
+                {
+                  "key": "limite",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));",
+                  "const d = pm.response.json();",
+                  "if (d.length) pm.collectionVariables.set(\"codMod\", d[0].cod_mod);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Riesgo de un colegio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/colegios/{{codMod}}?objetivo=riesgo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "colegios",
+                "{{codMod}}"
+              ],
+              "query": [
+                {
+                  "key": "objetivo",
+                  "value": "riesgo"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Colegio inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/colegios/99999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "colegios",
+                "99999999"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Administración",
+      "item": [
+        {
+          "name": "Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/logs?limite=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "limite",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Estadísticas de uso (Redis)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/estadisticas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "estadisticas"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Responde en menos de 100 ms\", () => pm.expect(pm.response.responseTime).to.be.below(100));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
