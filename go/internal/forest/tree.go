@@ -18,13 +18,14 @@ type Config struct {
 	Verbose         bool
 }
 
+// Las etiquetas JSON cortas reducen el tamaño de los árboles que los nodos envían por TCP (PC4).
 type Node struct {
-	IsLeaf     bool
-	ClassLabel int
-	FeatureIdx int
-	Threshold  float64
-	Left       *Node
-	Right      *Node
+	IsLeaf     bool    `json:"h,omitempty"`
+	ClassLabel int     `json:"c,omitempty"`
+	FeatureIdx int     `json:"f,omitempty"`
+	Threshold  float64 `json:"u,omitempty"`
+	Left       *Node   `json:"i,omitempty"`
+	Right      *Node   `json:"d,omitempty"`
 }
 
 // treeBuilder guarda el estado de un árbol en construcción; bins e y se comparten solo para lectura.
