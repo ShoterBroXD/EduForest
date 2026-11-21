@@ -1,6 +1,4 @@
-// Package api es el coordinador de EduForest: expone la API REST y el
-// WebSocket, habla por TCP con los nodos del clúster y guarda los
-// resultados en MongoDB y Redis.
+// Package api: coordinador de EduForest (REST, WebSocket, TCP a nodos, Mongo y Redis).
 package api
 
 import (
@@ -46,8 +44,7 @@ type Model struct {
 	Forest   *forest.Forest `json:"-"`
 }
 
-// targetData es lo que se prepara una sola vez por variable objetivo: la
-// separación temporal y el set de entrenamiento discretizado.
+// targetData: split temporal y set discretizado de una variable objetivo.
 type targetData struct {
 	clases []string
 	split  dataset.Split
@@ -92,9 +89,7 @@ func New(cfg Config, st store.Store, cache store.Cache, coord *cluster.Coordinat
 	}
 }
 
-// Start lanza las goroutines de fondo: el hub del WebSocket y el monitor
-// del clúster. Además crea el usuario administrador y carga los modelos
-// guardados en disco.
+// Start lanza el hub y el monitor, crea el admin y carga los modelos del disco.
 func (s *Server) Start(ctx context.Context) {
 	go s.hub.Run(ctx)
 	go s.monitor(ctx)

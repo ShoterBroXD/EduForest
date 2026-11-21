@@ -33,9 +33,7 @@ func (d *Dataset) Labels(target string) ([]int, []string, error) {
 	return nil, nil, fmt.Errorf("objetivo desconocido %q: usa riesgo o logro", target)
 }
 
-// Split es la separación temporal: se entrena con los años anteriores y se
-// evalúa en el año de prueba. TestRows guarda la fila del Dataset de cada
-// muestra de prueba, para saber a qué colegio corresponde cada predicción.
+// Split: entrena con años anteriores y prueba con el último; TestRows enlaza cada muestra con su colegio.
 type Split struct {
 	Xtr, Xte [][]float64
 	Ytr, Yte []int

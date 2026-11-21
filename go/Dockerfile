@@ -1,6 +1,4 @@
-# Imagen única de EduForest con los tres programas: api (coordinador),
-# node (nodo de cómputo) y clusterbench (benchmark del clúster).
-# Docker Compose elige cuál ejecutar con "command".
+# Imagen única con api, node y clusterbench; Compose elige con "command".
 
 # Etapa 1 (builder): compila binarios estáticos.
 FROM golang:1.26-alpine AS builder

@@ -1,6 +1,4 @@
-// Comando api: coordinador de EduForest. Expone la API REST y el WebSocket,
-// reparte el entrenamiento entre los nodos por TCP y guarda los resultados
-// en MongoDB y Redis.
+// Comando api: coordinador de EduForest (REST, WebSocket, TCP a nodos, Mongo y Redis).
 //
 // Variables de entorno (con sus valores por defecto):
 //

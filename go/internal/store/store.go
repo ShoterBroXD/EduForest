@@ -1,6 +1,4 @@
-// Package store guarda los resultados de EduForest. MongoDB es la base
-// persistente (entrenamientos, métricas del clúster, riesgo por colegio,
-// usuarios y logs) y Redis es la caché de respuestas frecuentes.
+// Package store: MongoDB para persistencia, Redis como caché.
 package store
 
 import (

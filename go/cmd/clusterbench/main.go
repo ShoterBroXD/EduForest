@@ -1,6 +1,4 @@
-// Comando clusterbench: compara el entrenamiento distribuido en modo
-// sharding y en modo replicado con 1..N nodos, y contra la versión
-// concurrente de un solo proceso (PC3).
+// Comando clusterbench: sharding vs replicado con 1..N nodos, contra la versión de un proceso (PC3).
 //
 //	go run ./cmd/clusterbench -nodes localhost:9101,localhost:9102,localhost:9103,localhost:9104
 package main

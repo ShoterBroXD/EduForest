@@ -70,8 +70,7 @@ func (r *entrenarReq) defaults() error {
 	return nil
 }
 
-// targetData prepara (una sola vez) la separación temporal y la
-// discretización de una variable objetivo.
+// targetData lo prepara una sola vez por objetivo.
 func (s *Server) targetData(objetivo string) (*targetData, error) {
 	s.mu.RLock()
 	td := s.data[objetivo]
@@ -133,9 +132,7 @@ func (s *Server) handleEntrenar(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// runTraining hace todo el entrenamiento en segundo plano y va avisando por
-// el WebSocket. Al terminar guarda el modelo, las métricas y el riesgo por
-// colegio.
+// runTraining entrena en segundo plano, avisa por WebSocket y guarda modelo, métricas y riesgo.
 func (s *Server) runTraining(e *store.Entrenamiento, req entrenarReq) {
 	defer s.training.Store(false)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)

@@ -10,10 +10,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// Hub reparte los eventos en tiempo real (progreso del entrenamiento,
-// estado del clúster y logs) a todos los clientes WebSocket conectados.
-// Una sola goroutine (Run) es dueña del mapa de clientes y recibe todo por
-// canales, así no hace falta mutex.
+// Hub difunde eventos (progreso, estado, logs) a los clientes WebSocket.
+// Solo Run toca el mapa de clientes, por eso no hay mutex.
 type Hub struct {
 	register   chan *wsClient
 	unregister chan *wsClient

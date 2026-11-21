@@ -159,15 +159,8 @@ type TrainOutcome struct {
 	Reports     []NodeReport   `json:"reportes"`
 }
 
-// Train reparte el entrenamiento entre los nodos activos:
-//
-//  1. Fan-out de datos (LOAD): en modo sharding cada nodo recibe un
-//     fragmento distinto de filas; en modo replicado todos reciben todo.
-//  2. Fan-out de trabajo (TRAIN): el árbol t va al nodo t mod k. Cada nodo
-//     lo construye con su propio worker pool y avisa cada árbol terminado.
-//  3. Fan-in: los árboles vuelven por un canal y se ubican en su posición
-//     global. Si un nodo se cae, sus árboles se reasignan a los que siguen
-//     activos.
+// Train: LOAD envía los datos (fragmento o copia), TRAIN asigna el árbol t al nodo t mod k
+// y los árboles vuelven por un canal. Si un nodo cae, sus árboles se reasignan.
 func (c *Coordinator) Train(ctx context.Context, job TrainJob, onEvent func(Event)) (*TrainOutcome, error) {
 	if job.Mode != ModoSharding && job.Mode != ModoReplicado {
 		return nil, fmt.Errorf("modo desconocido %q: usa %s o %s", job.Mode, ModoSharding, ModoReplicado)
@@ -413,10 +406,8 @@ func (c *Coordinator) Predict(ctx context.Context, nodes []string, modelID strin
 	return pred, votes, nil
 }
 
-// splitRows reparte las filas entre k nodos. En modo sharding se hace por
-// estratos: las filas de cada clase se barajan y se reparten por turnos,
-// así cada fragmento conserva la proporción de clases (el riesgo alto es
-// solo el 2%; un reparto al azar podría dejar a un nodo casi sin casos).
+// splitRows reparte las filas entre k nodos; en sharding estratifica por clase
+// para que ningún nodo se quede sin casos de riesgo alto (solo el 2%).
 func splitRows(y []int, numClasses, k int, mode string, seed int64) [][]int {
 	if mode == ModoReplicado {
 		return nil

@@ -2,9 +2,7 @@ package forest
 
 import "sync"
 
-// NewTrainerFromBins arma un Trainer con datos que ya llegan discretizados.
-// Lo usan los nodos del clúster: el coordinador discretiza una sola vez y
-// cada nodo recibe solo las columnas de su fragmento (shard).
+// NewTrainerFromBins crea un Trainer con datos ya discretizados (lo usan los nodos).
 func NewTrainerFromBins(bins *Binned, y []int, cfg Config) *Trainer {
 	if cfg.MaxBins == 0 {
 		cfg.MaxBins = 64
@@ -19,11 +17,8 @@ func NewTrainerFromBins(bins *Binned, y []int, cfg Config) *Trainer {
 	return &Trainer{Bins: bins, y: y, byClass: byClass, cfg: cfg}
 }
 
-// TrainTrees construye solo los árboles de treeIdx con un worker pool. Cada
-// árbol usa la semilla de su número global, así que el árbol 7 sale igual sin
-// importar qué nodo o qué worker lo construye. Devuelve los árboles en el
-// mismo orden que treeIdx y la importancia sin normalizar, para que el
-// coordinador pueda sumar la de todos los nodos.
+// TrainTrees construye los árboles de treeIdx con un worker pool. La semilla sale del índice
+// global (mismo árbol en cualquier nodo). La importancia va sin normalizar para poder sumarla.
 func (t *Trainer) TrainTrees(treeIdx []int, workers int, onTree func(treeIdx int)) ([]*Node, []float64) {
 	if workers < 1 {
 		workers = 1

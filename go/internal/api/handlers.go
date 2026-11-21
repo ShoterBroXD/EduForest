@@ -175,9 +175,7 @@ type predecirResp struct {
 	LatenciaMs     float64            `json:"latencia_ms"`
 }
 
-// handlePredecir clasifica un grupo de estudiantes. Primero busca en Redis;
-// si no está, pide a los nodos que voten con sus árboles y suma los votos;
-// si algún nodo ya no tiene el modelo, vota con el bosque guardado en la API.
+// handlePredecir: caché Redis → votos de los nodos → bosque local si falta el modelo.
 func (s *Server) handlePredecir(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	var req predecirReq

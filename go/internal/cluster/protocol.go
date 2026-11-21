@@ -1,7 +1,5 @@
-// Package cluster implementa el Random Forest distribuido de la PC4: nodos
-// de cómputo que entrenan árboles sobre su fragmento del dataset y un
-// coordinador que reparte el trabajo (fan-out) y junta los árboles (fan-in).
-// La comunicación es por TCP con mensajes JSON, como en los laboratorios.
+// Package cluster: Random Forest distribuido. El coordinador reparte árboles a los nodos
+// (fan-out) y los junta (fan-in) por TCP con JSON.
 package cluster
 
 import (
@@ -38,9 +36,7 @@ type Mensaje struct {
 	Arbol   int           `json:"arbol,omitempty"` // PROGRESS: número del árbol terminado
 }
 
-// Shard es el fragmento del set de entrenamiento que recibe un nodo, ya
-// discretizado: una columna de bytes por feature (JSON las manda en base64,
-// así 190 mil filas x 15 features pesan unos 4 MB).
+// Shard: fragmento discretizado, una columna []byte por feature (~4 MB por 190k filas).
 type Shard struct {
 	DatasetID  string      `json:"dataset_id"`
 	NumClasses int         `json:"num_clases"`

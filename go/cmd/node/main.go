@@ -1,9 +1,8 @@
-// Comando node: nodo de cómputo del clúster EduForest. Recibe por TCP un
-// fragmento del dataset y la lista de árboles que debe construir.
+// Comando node: recibe por TCP un fragmento del dataset y los árboles a construir.
 //
 //	go run ./cmd/node -addr :9100 -name nodo1
 //
-// En Docker se configura con las variables NODE_ADDR, NODE_NAME y NODE_WORKERS.
+// Docker: NODE_ADDR, NODE_NAME, NODE_WORKERS.
 package main
 
 import (

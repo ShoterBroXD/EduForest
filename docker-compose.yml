@@ -1,11 +1,8 @@
-# EduForest PC4: API coordinador + 4 nodos de cómputo + MongoDB + Redis.
-#
-#   docker compose up --build -d          levanta todo
-#   docker compose logs -f api nodo1      sigue los logs
-#   docker compose stop nodo3             simula la caída de un nodo
+# EduForest PC4: API + 4 nodos + MongoDB + Redis. Swagger: http://localhost:8080/swagger/ (admin/admin123)
+#   docker compose up --build -d                    levanta todo
+#   docker compose logs -f api nodo1                sigue los logs
+#   docker compose stop nodo3                       simula la caída de un nodo
 #   docker compose --profile bench run --rm bench   benchmark sharding vs replicado
-#
-# Swagger: http://localhost:8080/swagger/   (usuario admin / admin123)
 name: eduforest
 
 x-eduforest: &eduforest

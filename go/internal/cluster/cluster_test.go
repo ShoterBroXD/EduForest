@@ -54,9 +54,7 @@ func newJob(mode string) (TrainJob, [][]float64, []int) {
 	return TrainJob{ID: "test-" + mode, Bins: bins, Y: y, Config: cfg, Mode: mode, Seed: 3}, X, y
 }
 
-// En modo replicado cada nodo ve todas las filas y cada árbol usa la semilla
-// de su número global: el bosque debe ser idéntico al de la PC3 en un solo
-// proceso, aunque viaje por la red en JSON.
+// En modo replicado el bosque debe ser idéntico al de la PC3 (misma semilla por árbol).
 func TestReplicadoIgualQueCentralizado(t *testing.T) {
 	job, X, y := newJob(ModoReplicado)
 	local := forest.NewTrainer(X, y, job.Config, 2).TrainConcurrent(2)

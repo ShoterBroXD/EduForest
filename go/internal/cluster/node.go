@@ -15,9 +15,7 @@ import (
 	"github.com/ShoterBroXD/EduForest/internal/forest"
 )
 
-// Node es un nodo de cómputo del clúster. Guarda en memoria los fragmentos
-// que le envió el coordinador y los árboles que entrenó, y atiende cada
-// conexión TCP en su propia goroutine.
+// Node guarda sus fragmentos y árboles en memoria; una goroutine por conexión TCP.
 type Node struct {
 	Name    string
 	Workers int
