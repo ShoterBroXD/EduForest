@@ -45,7 +45,8 @@ func (m *Mongo) indexes(ctx context.Context) error {
 		},
 		"colegios": {
 			{Keys: bson.D{{Key: "objetivo", Value: 1}, {Key: "cod_mod", Value: 1}}},
-			{Keys: bson.D{{Key: "objetivo", Value: 1}, {Key: "alumnos_clase_alta", Value: -1}}},
+			// Cubre el filtro y el orden completo del ranking, así Mongo no ordena en memoria.
+			{Keys: bson.D{{Key: "objetivo", Value: 1}, {Key: "alumnos_clase_alta", Value: -1}, {Key: "prob_clase_alta", Value: -1}}},
 		},
 		"entrenamientos": {{Keys: bson.D{{Key: "inicio", Value: -1}}}},
 		"logs":           {{Keys: bson.D{{Key: "fecha", Value: -1}}}},
@@ -80,6 +81,15 @@ func (m *Mongo) Entrenamientos(ctx context.Context, limite int) ([]Entrenamiento
 	opts := options.Find().SetSort(bson.D{{Key: "inicio", Value: -1}}).SetLimit(int64(limite)).
 		SetProjection(bson.M{"reportes": 0, "importancia": 0})
 	return find[Entrenamiento](ctx, m.db.Collection("entrenamientos"), bson.M{}, opts)
+}
+
+func (m *Mongo) CerrarInterrumpidos(ctx context.Context) (int, error) {
+	res, err := m.db.Collection("entrenamientos").UpdateMany(ctx, bson.M{"estado": "en_curso"},
+		bson.M{"$set": bson.M{"estado": "fallido", "error": ErrInterrumpido, "fin": time.Now()}})
+	if err != nil {
+		return 0, err
+	}
+	return int(res.ModifiedCount), nil
 }
 
 func (m *Mongo) GuardarMetricas(ctx context.Context, ms []MetricaNodo) error {
