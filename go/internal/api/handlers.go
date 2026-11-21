@@ -323,7 +323,7 @@ func (s *Server) handleRanking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	limite := intParam(r, "limite", 20, 500)
-	key := fmt.Sprintf("ranking:%s:%s:%d", objetivo, s.currentModelID(objetivo), limite)
+	key := rankingKey(objetivo, s.currentModelID(objetivo), limite)
 	if b, ok := s.cache.Get(r.Context(), key); ok {
 		w.Header().Set("X-Cache", "HIT")
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -340,6 +340,24 @@ func (s *Server) handleRanking(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Cache", "MISS")
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Write(b)
+}
+
+func rankingKey(objetivo, modelID string, limite int) string {
+	return fmt.Sprintf("ranking:%s:%s:%d", objetivo, modelID, limite)
+}
+
+// warmRanking deja en Redis los rankings más pedidos apenas hay un modelo
+// nuevo, así la primera consulta del dashboard no tiene que ir a MongoDB.
+func (s *Server) warmRanking(ctx context.Context, objetivo, modelID string) {
+	for _, limite := range []int{10, 20, 50} {
+		cs, err := s.store.Ranking(ctx, objetivo, limite)
+		if err != nil {
+			return
+		}
+		if b, err := json.Marshal(cs); err == nil {
+			s.cache.Set(ctx, rankingKey(objetivo, modelID, limite), b, time.Hour)
+		}
+	}
 }
 
 func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {

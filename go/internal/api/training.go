@@ -198,6 +198,7 @@ func (s *Server) runTraining(e *store.Entrenamiento, req entrenarReq) {
 	if err := s.saveModel(model); err != nil {
 		log.Printf("[api] no se pudo guardar el modelo en disco: %v", err)
 	}
+	s.warmRanking(ctx, model.Objetivo, model.ID)
 	s.mu.Lock()
 	s.models[model.Objetivo] = model
 	s.mu.Unlock()

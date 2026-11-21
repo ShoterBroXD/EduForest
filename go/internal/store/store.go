@@ -13,6 +13,8 @@ import (
 
 var ErrNoEncontrado = errors.New("no encontrado")
 
+const ErrInterrumpido = "interrumpido: la API se detuvo antes de terminar"
+
 type Metricas struct {
 	Clases              []string  `json:"clases" bson:"clases"`
 	Exactitud           float64   `json:"exactitud" bson:"exactitud"`
@@ -108,6 +110,9 @@ type Store interface {
 	GuardarEntrenamiento(ctx context.Context, e *Entrenamiento) error
 	Entrenamiento(ctx context.Context, id string) (*Entrenamiento, error)
 	Entrenamientos(ctx context.Context, limite int) ([]Entrenamiento, error)
+	// CerrarInterrumpidos marca como fallidos los entrenamientos que quedaron
+	// en curso porque la API se detuvo antes de terminarlos.
+	CerrarInterrumpidos(ctx context.Context) (int, error)
 	GuardarMetricas(ctx context.Context, m []MetricaNodo) error
 	Metricas(ctx context.Context, nodo string, limite int) ([]MetricaNodo, error)
 	GuardarColegios(ctx context.Context, objetivo string, cs []Colegio) error

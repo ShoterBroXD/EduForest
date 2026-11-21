@@ -66,6 +66,21 @@ func (m *Memory) Entrenamientos(_ context.Context, limite int) ([]Entrenamiento,
 	return out[:min(limite, len(out))], nil
 }
 
+func (m *Memory) CerrarInterrumpidos(context.Context) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for id, e := range m.entrenamientos {
+		if e.Estado == "en_curso" {
+			now := time.Now()
+			e.Estado, e.Error, e.Fin = "fallido", ErrInterrumpido, &now
+			m.entrenamientos[id] = e
+			n++
+		}
+	}
+	return n, nil
+}
+
 func (m *Memory) GuardarMetricas(_ context.Context, ms []MetricaNodo) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

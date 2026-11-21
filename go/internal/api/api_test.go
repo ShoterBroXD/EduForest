@@ -239,6 +239,10 @@ func TestEntrenarPredecirYColegios(t *testing.T) {
 			t.Fatal("el ranking no está ordenado")
 		}
 	}
+	// El ranking de 10 se precalculó en Redis al terminar el entrenamiento.
+	if resp, _ := e.do(t, "GET", "/api/colegios?limite=10", e.admin, nil); resp.Header.Get("X-Cache") != "HIT" {
+		t.Fatalf("el ranking de 10 debería venir precalculado, X-Cache=%s", resp.Header.Get("X-Cache"))
+	}
 	path := "/api/colegios/" + itoa(ranking[0].CodMod)
 	for _, want := range []string{"MISS", "HIT"} {
 		resp, _ := e.do(t, "GET", path, e.admin, nil)

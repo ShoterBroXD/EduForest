@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -99,6 +100,9 @@ func (s *Server) Start(ctx context.Context) {
 	go s.monitor(ctx)
 	if err := s.seedAdmin(ctx); err != nil {
 		log.Printf("[api] no se pudo crear el usuario admin: %v", err)
+	}
+	if n, err := s.store.CerrarInterrumpidos(ctx); err == nil && n > 0 {
+		s.logEvent("alerta", "api", fmt.Sprintf("%d entrenamiento(s) quedaron en curso al reiniciar la API y se marcaron como fallidos", n))
 	}
 	s.loadModels()
 }

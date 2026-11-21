@@ -28,6 +28,22 @@ func TestMemoryRanking(t *testing.T) {
 	}
 }
 
+func TestCerrarInterrumpidos(t *testing.T) {
+	m := NewMemory()
+	ctx := context.Background()
+	m.GuardarEntrenamiento(ctx, &Entrenamiento{ID: "a", Estado: "en_curso"})
+	m.GuardarEntrenamiento(ctx, &Entrenamiento{ID: "b", Estado: "completado"})
+	if n, _ := m.CerrarInterrumpidos(ctx); n != 1 {
+		t.Fatalf("se esperaba 1 entrenamiento cerrado, hubo %d", n)
+	}
+	if e, _ := m.Entrenamiento(ctx, "a"); e.Estado != "fallido" || e.Fin == nil {
+		t.Fatalf("estado %q", e.Estado)
+	}
+	if e, _ := m.Entrenamiento(ctx, "b"); e.Estado != "completado" {
+		t.Fatal("no debe tocar los entrenamientos terminados")
+	}
+}
+
 func testCache(t *testing.T, c Cache) {
 	ctx := context.Background()
 	c.Set(ctx, "eduforest:test", []byte("hola"), time.Second)
