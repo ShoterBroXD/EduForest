@@ -1,0 +1,364 @@
+openapi: 3.0.3
+info:
+  title: EduForest API
+  version: "1.0"
+  description: |
+    API coordinador de EduForest (CC65, UPC). Gestiona el clúster de nodos que
+    entrenan el Random Forest distribuido por TCP, guarda los resultados en
+    MongoDB, usa Redis como caché y envía eventos en tiempo real por WebSocket
+    (`GET /ws?token=<jwt>`).
+
+    Para probar: `POST /api/auth/login`, copia el token y pulsa **Authorize**.
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: Autenticación
+  - name: Clúster
+  - name: Entrenamiento
+  - name: Predicción
+  - name: Administración
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+    Login:
+      type: object
+      required: [usuario, clave]
+      properties:
+        usuario: { type: string, example: admin }
+        clave: { type: string, example: admin123 }
+    Token:
+      type: object
+      properties:
+        token: { type: string }
+        expira: { type: string, format: date-time }
+        usuario: { type: string }
+        rol: { type: string, enum: [admin, analista] }
+    NuevoUsuario:
+      type: object
+      required: [usuario, clave]
+      properties:
+        usuario: { type: string, example: angel }
+        clave: { type: string, example: clave123 }
+        rol: { type: string, enum: [admin, analista], default: analista }
+    NodeInfo:
+      type: object
+      properties:
+        nombre: { type: string }
+        workers: { type: integer }
+        num_cpu: { type: integer }
+        goroutines: { type: integer }
+        heap_mb: { type: number }
+        cpu_pct: { type: number }
+        datasets: { type: integer }
+        modelos: { type: integer }
+        arboles_entrenados: { type: integer }
+        uptime_seg: { type: number }
+    NodeStatus:
+      type: object
+      properties:
+        direccion: { type: string, example: "nodo1:9100" }
+        activo: { type: boolean }
+        latencia_ms: { type: number }
+        info: { $ref: "#/components/schemas/NodeInfo" }
+        error: { type: string }
+        revisado: { type: string, format: date-time }
+    Entrenar:
+      type: object
+      properties:
+        objetivo: { type: string, enum: [riesgo, logro], default: riesgo }
+        modo: { type: string, enum: [sharding, replicado], default: sharding }
+        arboles: { type: integer, default: 100 }
+        profundidad: { type: integer, default: 14 }
+        min_samples_split: { type: integer, default: 100 }
+        balance: { type: number, default: 0.5, description: "0 = sin corrección, 1 = clases iguales" }
+        semilla: { type: integer, default: 42 }
+    NodeReport:
+      type: object
+      properties:
+        nodo: { type: string }
+        filas: { type: integer }
+        arboles: { type: integer }
+        bytes_enviados: { type: integer }
+        bytes_recibidos: { type: integer }
+        carga_ms: { type: number }
+        entrenamiento_ms: { type: number }
+        computo_ms: { type: number }
+        workers: { type: integer }
+        fallo: { type: string }
+    Entrenamiento:
+      type: object
+      properties:
+        id: { type: string }
+        objetivo: { type: string }
+        modo: { type: string }
+        estado: { type: string, enum: [en_curso, completado, fallido] }
+        usuario: { type: string }
+        arboles: { type: integer }
+        nodos: { type: array, items: { type: string } }
+        filas_entrenamiento: { type: integer }
+        filas_prueba: { type: integer }
+        carga_ms: { type: number }
+        entrenamiento_ms: { type: number }
+        total_ms: { type: number }
+        arboles_reasignados: { type: integer }
+        metricas:
+          type: object
+          properties:
+            clases: { type: array, items: { type: string } }
+            exactitud: { type: number }
+            exactitud_balanceada: { type: number }
+            f1_macro: { type: number }
+            recall: { type: array, items: { type: number } }
+            matriz_confusion: { type: array, items: { type: array, items: { type: integer } } }
+        importancia:
+          type: array
+          items:
+            type: object
+            properties:
+              variable: { type: string }
+              valor: { type: number }
+        reportes: { type: array, items: { $ref: "#/components/schemas/NodeReport" } }
+        error: { type: string }
+        inicio: { type: string, format: date-time }
+        fin: { type: string, format: date-time }
+    Prediccion:
+      type: object
+      properties:
+        objetivo: { type: string, enum: [riesgo, logro], default: riesgo }
+        variables:
+          type: object
+          additionalProperties: { type: number }
+          example:
+            anio: 2024
+            secundaria: 1
+            gestion: 0
+            edad: 15
+            alumnos_grupo: 28
+            pct_mujer: 0.5
+            pct_discapacidad: 0
+            tipo_disca_registrado: 0
+            pct_extranjero: 0.04
+            pct_sin_dni: 0
+            pct_atraso: 0.25
+            alumnos_servicio: 320
+            pct_atraso_servicio: 0.18
+            no_logro_servicio_prev: 0.12
+            retiro_servicio_prev: 0.03
+        valores:
+          type: array
+          items: { type: number }
+          description: Alternativa a variables, las 15 en orden.
+    ResultadoPrediccion:
+      type: object
+      properties:
+        objetivo: { type: string }
+        clase: { type: integer }
+        etiqueta: { type: string, example: Riesgo bajo }
+        probabilidades: { type: object, additionalProperties: { type: number } }
+        votos: { type: array, items: { type: integer } }
+        fuente: { type: string, enum: [cluster, local, cache] }
+        modelo_id: { type: string }
+        latencia_ms: { type: number }
+    Colegio:
+      type: object
+      properties:
+        id: { type: string }
+        objetivo: { type: string }
+        cod_mod: { type: integer }
+        anexo: { type: integer }
+        anio: { type: integer }
+        gestion: { type: string }
+        grupos: { type: integer }
+        alumnos: { type: integer }
+        alumnos_por_clase: { type: array, items: { type: integer } }
+        alumnos_reales_por_clase: { type: array, items: { type: integer } }
+        prob_clase_alta: { type: number }
+        alumnos_clase_alta: { type: integer }
+        modelo_id: { type: string }
+security:
+  - bearerAuth: []
+paths:
+  /api/salud:
+    get:
+      tags: [Administración]
+      summary: Estado de la API, MongoDB y Redis
+      security: []
+      responses:
+        "200": { description: OK }
+  /api/auth/login:
+    post:
+      tags: [Autenticación]
+      summary: Inicia sesión y devuelve un JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Login" }
+      responses:
+        "200":
+          description: Token
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Token" }
+        "401":
+          description: Credenciales incorrectas
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /api/auth/yo:
+    get:
+      tags: [Autenticación]
+      summary: Datos del usuario del token
+      responses:
+        "200": { description: OK }
+        "401": { description: Sin token o token vencido }
+  /api/usuarios:
+    post:
+      tags: [Administración]
+      summary: Crea un usuario (solo admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NuevoUsuario" }
+      responses:
+        "201": { description: Creado }
+        "403": { description: Requiere rol admin }
+        "409": { description: Ya existe }
+  /api/cluster:
+    get:
+      tags: [Clúster]
+      summary: Estado de los nodos (CPU, memoria, latencia)
+      parameters:
+        - in: query
+          name: en_vivo
+          schema: { type: string, enum: ["1"] }
+          description: Consulta a los nodos en vez de usar la caché de Redis
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nodos: { type: array, items: { $ref: "#/components/schemas/NodeStatus" } }
+                  activos: { type: integer }
+                  total: { type: integer }
+                  fuente: { type: string, enum: [cache, en_vivo] }
+  /api/cluster/metricas:
+    get:
+      tags: [Clúster]
+      summary: Historial de métricas de los nodos guardado en MongoDB
+      parameters:
+        - { in: query, name: nodo, schema: { type: string } }
+        - { in: query, name: limite, schema: { type: integer, default: 100 } }
+      responses:
+        "200": { description: OK }
+  /api/entrenamientos:
+    post:
+      tags: [Entrenamiento]
+      summary: Inicia un entrenamiento distribuido (solo admin)
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Entrenar" }
+      responses:
+        "202": { description: "Iniciado; el progreso llega por WebSocket" }
+        "409": { description: Ya hay un entrenamiento en curso }
+    get:
+      tags: [Entrenamiento]
+      summary: Lista los entrenamientos
+      parameters:
+        - { in: query, name: limite, schema: { type: integer, default: 20 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Entrenamiento" } }
+  /api/entrenamientos/{id}:
+    get:
+      tags: [Entrenamiento]
+      summary: Detalle de un entrenamiento, con métricas y reporte por nodo
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entrenamiento" }
+        "404": { description: No existe }
+  /api/modelos:
+    get:
+      tags: [Entrenamiento]
+      summary: Modelos cargados en la API
+      responses:
+        "200": { description: OK }
+  /api/predicciones:
+    post:
+      tags: [Predicción]
+      summary: Clasifica un grupo de estudiantes (votan los nodos)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Prediccion" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResultadoPrediccion" }
+        "404": { description: No hay modelo entrenado }
+  /api/colegios:
+    get:
+      tags: [Predicción]
+      summary: Colegios con más alumnos en riesgo alto (o logro bajo)
+      parameters:
+        - { in: query, name: objetivo, schema: { type: string, enum: [riesgo, logro], default: riesgo } }
+        - { in: query, name: limite, schema: { type: integer, default: 20 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Colegio" } }
+  /api/colegios/{codmod}:
+    get:
+      tags: [Predicción]
+      summary: Riesgo estimado de un colegio (con caché en Redis)
+      parameters:
+        - { in: path, name: codmod, required: true, schema: { type: integer } }
+        - { in: query, name: objetivo, schema: { type: string, enum: [riesgo, logro], default: riesgo } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Colegio" } }
+        "404": { description: Sin predicciones para ese colegio }
+  /api/logs:
+    get:
+      tags: [Administración]
+      summary: Logs del sistema (solo admin)
+      parameters:
+        - { in: query, name: limite, schema: { type: integer, default: 100 } }
+      responses:
+        "200": { description: OK }
+  /api/estadisticas:
+    get:
+      tags: [Administración]
+      summary: Peticiones por ruta contadas en Redis (solo admin)
+      responses:
+        "200": { description: OK }
