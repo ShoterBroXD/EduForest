@@ -162,7 +162,7 @@ func (n *Node) train(t *TrainTask, send func(Mensaje) error) (Mensaje, error) {
 	defer func() { <-n.trainSem }()
 
 	start := time.Now()
-	log.Printf("[%s] entrenando %d árboles sobre %d filas", n.Name, len(t.Trees), len(data.y))
+	log.Printf("[%s] entrenando %d árboles del modelo %s sobre %d filas", n.Name, len(t.Trees), t.ModelID, len(data.y))
 	trainer := forest.NewTrainerFromBins(data.bins, data.y, t.Config)
 	trees, imp := trainer.TrainTrees(t.Trees, n.Workers, func(treeIdx int) {
 		send(Mensaje{Tipo: TipoProgress, Arbol: treeIdx})
@@ -181,7 +181,7 @@ func (n *Node) train(t *TrainTask, send func(Mensaje) error) (Mensaje, error) {
 	n.remember("m:" + t.ModelID)
 	n.trained += len(trees)
 	n.mu.Unlock()
-	log.Printf("[%s] %d árboles listos en %.0f ms", n.Name, len(trees), ms)
+	log.Printf("[%s] %d árboles del modelo %s listos en %.0f ms", n.Name, len(trees), t.ModelID, ms)
 	return Mensaje{Tipo: TipoResult, Result: &TrainResult{
 		Trees: trees, Importance: imp, Rows: len(data.y), Workers: n.Workers, Millis: ms,
 	}}, nil
@@ -209,6 +209,9 @@ func (n *Node) predict(p *PredictTask) (Mensaje, error) {
 	votes := make([][]int, len(p.X))
 	for i, x := range p.X {
 		votes[i] = f.Votes(x)
+	}
+	if p.ReqID != "" {
+		log.Printf("[%s] PREDICT id=%s modelo %s: %d fila(s), %d árboles votaron", n.Name, p.ReqID, p.ModelID, len(p.X), len(f.Trees))
 	}
 	return Mensaje{Tipo: TipoResult, Votes: &PredictVotes{Votes: votes, Trees: len(f.Trees)}}, nil
 }

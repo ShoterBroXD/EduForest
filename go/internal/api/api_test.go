@@ -235,7 +235,7 @@ func TestEntrenarPredecirYColegios(t *testing.T) {
 		t.Fatalf("ranking con %d colegios", len(ranking))
 	}
 	for i := 1; i < len(ranking); i++ {
-		if ranking[i].AlumnosAlta > ranking[i-1].AlumnosAlta {
+		if ranking[i].AltaEsperados > ranking[i-1].AltaEsperados {
 			t.Fatal("el ranking no está ordenado")
 		}
 	}

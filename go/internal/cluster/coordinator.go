@@ -364,7 +364,7 @@ func (c *Coordinator) Predict(ctx context.Context, nodes []string, modelID strin
 	ch := make(chan res, len(nodes))
 	for _, addr := range nodes {
 		go func() {
-			m, _, err := c.call(ctx, addr, Mensaje{Tipo: TipoPredict, Predict: &PredictTask{ModelID: modelID, X: X}}, 5*time.Second, 1, nil)
+			m, _, err := c.call(ctx, addr, Mensaje{Tipo: TipoPredict, Predict: &PredictTask{ModelID: modelID, X: X, ReqID: RequestID(ctx)}}, 5*time.Second, 1, nil)
 			ch <- res{m.Votes, err}
 		}()
 	}

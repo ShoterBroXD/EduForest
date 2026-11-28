@@ -75,7 +75,6 @@ func (h *Hub) Broadcast(v any) {
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 4096,
-	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
 // handleWS valida el token (en el parámetro ?token=, porque el navegador no
@@ -86,7 +85,14 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "token inválido: conecta a /ws?token=<jwt>")
 		return
 	}
-	conn, err := upgrader.Upgrade(w, r, nil)
+	// Solo los orígenes permitidos por CORS pueden abrir el WebSocket desde un
+	// navegador. Clientes sin Origin (Postman, pruebas) entran con su token.
+	up := upgrader
+	up.CheckOrigin = func(r *http.Request) bool {
+		o := r.Header.Get("Origin")
+		return o == "" || s.originAllowed(o)
+	}
+	conn, err := up.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("[ws] upgrade falló: %v", err)
 		return

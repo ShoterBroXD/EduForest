@@ -174,6 +174,8 @@ components:
         objetivo: { type: string }
         cod_mod: { type: integer }
         anexo: { type: integer }
+        nombre: { type: string, example: LOS LUCEROS }
+        nivel: { type: string, enum: [Primaria, Secundaria] }
         anio: { type: integer }
         gestion: { type: string }
         grupos: { type: integer }
@@ -182,6 +184,7 @@ components:
         alumnos_reales_por_clase: { type: array, items: { type: integer } }
         prob_clase_alta: { type: number }
         alumnos_clase_alta: { type: integer }
+        alumnos_alta_esperados: { type: number, description: "probabilidad de la clase alta × alumnos; ordena el ranking" }
         modelo_id: { type: string }
 security:
   - bearerAuth: []
@@ -214,6 +217,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "429": { description: "Más de 10 intentos por minuto desde la misma IP" }
   /api/auth/yo:
     get:
       tags: [Autenticación]
@@ -222,6 +226,12 @@ paths:
         "200": { description: OK }
         "401": { description: Sin token o token vencido }
   /api/usuarios:
+    get:
+      tags: [Administración]
+      summary: Lista los usuarios (solo admin)
+      responses:
+        "200": { description: OK }
+        "403": { description: Requiere rol admin }
     post:
       tags: [Administración]
       summary: Crea un usuario (solo admin)
@@ -334,6 +344,40 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/Colegio" } }
+  /api/colegios/buscar:
+    get:
+      tags: [Predicción]
+      summary: Busca colegios por nombre o por código modular
+      parameters:
+        - { in: query, name: q, required: true, schema: { type: string, minLength: 3 }, example: luceros }
+        - { in: query, name: objetivo, schema: { type: string, enum: [riesgo, logro], default: riesgo } }
+        - { in: query, name: limite, schema: { type: integer, default: 20 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Colegio" } }
+        "400": { description: Texto muy corto }
+  /api/impacto:
+    get:
+      tags: [Predicción]
+      summary: Impacto social del modelo
+      description: |
+        Cuántos alumnos en grupos de la clase alta (riesgo alto o logro bajo) se alcanzan si se
+        visitan los colegios en el orden del ranking, comparado con elegirlos al azar o por tamaño.
+        También agrupa por tipo de gestión y nivel.
+      parameters:
+        - { in: query, name: objetivo, schema: { type: string, enum: [riesgo, logro], default: riesgo } }
+      responses:
+        "200": { description: OK }
+        "404": { description: Aún no hay un modelo entrenado }
+  /api/variables:
+    get:
+      tags: [Predicción]
+      summary: Las 15 variables del modelo con su descripción y sus rangos reales
+      responses:
+        "200": { description: OK }
   /api/colegios/{codmod}:
     get:
       tags: [Predicción]

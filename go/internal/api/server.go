@@ -65,6 +65,17 @@ type Server struct {
 
 	training atomic.Bool // solo un entrenamiento a la vez
 	started  time.Time
+
+	namesMu sync.RWMutex
+	names   map[dataset.SchoolKey]string // nombre de cada colegio, para la web
+
+	impactMu sync.Mutex
+	impacts  map[string]*store.Impacto // último impacto calculado por objetivo
+
+	varsOnce sync.Once
+	vars     []Variable
+
+	loginLimiter *rateLimiter
 }
 
 func New(cfg Config, st store.Store, cache store.Cache, coord *cluster.Coordinator, ds *dataset.Dataset) *Server {
@@ -86,7 +97,24 @@ func New(cfg Config, st store.Store, cache store.Cache, coord *cluster.Coordinat
 		models:  map[string]*Model{},
 		data:    map[string]*targetData{},
 		started: time.Now(),
+		impacts: map[string]*store.Impacto{},
+
+		loginLimiter: newRateLimiter(10, time.Minute),
 	}
+}
+
+// SetSchoolNames guarda los nombres de los colegios. Se llama al arrancar,
+// cuando termina de leerse el CSV del año de prueba.
+func (s *Server) SetSchoolNames(names map[dataset.SchoolKey]string) {
+	s.namesMu.Lock()
+	s.names = names
+	s.namesMu.Unlock()
+}
+
+func (s *Server) schoolName(cod, anexo int) string {
+	s.namesMu.RLock()
+	defer s.namesMu.RUnlock()
+	return s.names[dataset.SchoolKey{CodMod: cod, Anexo: anexo}]
 }
 
 // Start lanza el hub y el monitor, crea el admin y carga los modelos del disco.
@@ -105,9 +133,10 @@ func (s *Server) Start(ctx context.Context) {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/salud", s.handleSalud)
-	mux.HandleFunc("POST /api/auth/login", s.handleLogin)
+	mux.HandleFunc("POST /api/auth/login", s.limitLogin(s.handleLogin))
 	mux.HandleFunc("GET /api/auth/yo", s.auth(s.handleYo, ""))
 	mux.HandleFunc("POST /api/usuarios", s.auth(s.handleCrearUsuario, RolAdmin))
+	mux.HandleFunc("GET /api/usuarios", s.auth(s.handleUsuarios, RolAdmin))
 
 	mux.HandleFunc("GET /api/cluster", s.auth(s.handleCluster, ""))
 	mux.HandleFunc("GET /api/cluster/metricas", s.auth(s.handleMetricas, ""))
@@ -120,6 +149,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/predicciones", s.auth(s.handlePredecir, ""))
 	mux.HandleFunc("GET /api/colegios", s.auth(s.handleRanking, ""))
 	mux.HandleFunc("GET /api/colegios/{codmod}", s.auth(s.handleColegio, ""))
+	mux.HandleFunc("GET /api/colegios/buscar", s.auth(s.handleBuscar, ""))
+	mux.HandleFunc("GET /api/impacto", s.auth(s.handleImpacto, ""))
+	mux.HandleFunc("GET /api/variables", s.auth(s.handleVariables, ""))
 
 	mux.HandleFunc("GET /api/logs", s.auth(s.handleLogs, RolAdmin))
 	mux.HandleFunc("GET /api/estadisticas", s.auth(s.handleEstadisticas, RolAdmin))
@@ -132,30 +164,26 @@ func (s *Server) Handler() http.Handler {
 	return s.withMiddleware(mux)
 }
 
-// withMiddleware agrega CORS, el registro de cada petición y el contador de
-// peticiones por ruta en Redis.
+// withMiddleware aplica las políticas de seguridad (security.go), registra
+// cada petición y cuenta las peticiones por ruta en Redis.
 func (s *Server) withMiddleware(next *http.ServeMux) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := s.cfg.CORSOrigin
-		if origin == "" {
-			origin = "*"
-		}
-		w.Header().Set("Access-Control-Allow-Origin", origin)
-		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		reqID := s.applySecurity(w, r)
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		// El id viaja en el contexto hasta el coordinador y los nodos.
+		r = r.WithContext(cluster.WithRequestID(r.Context(), reqID))
 		next.ServeHTTP(rec, r)
 		_, pattern := next.Handler(r)
 		if pattern != "" && pattern != "GET /ws" {
 			go s.cache.Incr(context.Background(), "api:peticiones", pattern)
 		}
 		if r.URL.Path != "/api/salud" {
-			log.Printf("[api] %s %s %d %.1fms", r.Method, r.URL.Path, rec.status, float64(time.Since(start).Microseconds())/1000)
+			log.Printf("[api] %s %s %d %.1fms id=%s", r.Method, r.URL.Path, rec.status, float64(time.Since(start).Microseconds())/1000, reqID)
 		}
 	})
 }
