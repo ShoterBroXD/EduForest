@@ -49,6 +49,7 @@ type Entrenamiento struct {
 	Metricas           *Metricas            `json:"metricas,omitempty" bson:"metricas,omitempty"`
 	Importancia        []Importancia        `json:"importancia,omitempty" bson:"importancia,omitempty"`
 	Reportes           []cluster.NodeReport `json:"reportes,omitempty" bson:"reportes,omitempty"`
+	Impacto            *Impacto             `json:"impacto,omitempty" bson:"impacto,omitempty"`
 	Error              string               `json:"error,omitempty" bson:"error,omitempty"`
 	Inicio             time.Time            `json:"inicio" bson:"inicio"`
 	Fin                *time.Time           `json:"fin,omitempty" bson:"fin,omitempty"`
@@ -70,20 +71,25 @@ type MetricaNodo struct {
 // Colegio resume las predicciones de un servicio educativo (cod_mod + anexo)
 // para el año de prueba.
 type Colegio struct {
-	ID              string    `json:"id" bson:"_id"` // objetivo:codmod-anexo
-	Objetivo        string    `json:"objetivo" bson:"objetivo"`
-	CodMod          int       `json:"cod_mod" bson:"cod_mod"`
-	Anexo           int       `json:"anexo" bson:"anexo"`
-	Anio            int       `json:"anio" bson:"anio"`
-	Gestion         string    `json:"gestion" bson:"gestion"`
-	Grupos          int       `json:"grupos" bson:"grupos"`
-	Alumnos         int       `json:"alumnos" bson:"alumnos"`
-	AlumnosPorClase []int     `json:"alumnos_por_clase" bson:"alumnos_por_clase"` // según la predicción
-	RealesPorClase  []int     `json:"alumnos_reales_por_clase" bson:"alumnos_reales_por_clase"`
-	ProbClaseAlta   float64   `json:"prob_clase_alta" bson:"prob_clase_alta"` // promedio ponderado por alumnos
-	AlumnosAlta     int       `json:"alumnos_clase_alta" bson:"alumnos_clase_alta"`
-	ModeloID        string    `json:"modelo_id" bson:"modelo_id"`
-	Actualizado     time.Time `json:"actualizado" bson:"actualizado"`
+	ID              string  `json:"id" bson:"_id"` // objetivo:codmod-anexo
+	Objetivo        string  `json:"objetivo" bson:"objetivo"`
+	CodMod          int     `json:"cod_mod" bson:"cod_mod"`
+	Anexo           int     `json:"anexo" bson:"anexo"`
+	Nombre          string  `json:"nombre" bson:"nombre"`
+	Nivel           string  `json:"nivel" bson:"nivel"` // Primaria o Secundaria
+	Anio            int     `json:"anio" bson:"anio"`
+	Gestion         string  `json:"gestion" bson:"gestion"`
+	Grupos          int     `json:"grupos" bson:"grupos"`
+	Alumnos         int     `json:"alumnos" bson:"alumnos"`
+	AlumnosPorClase []int   `json:"alumnos_por_clase" bson:"alumnos_por_clase"` // según la predicción
+	RealesPorClase  []int   `json:"alumnos_reales_por_clase" bson:"alumnos_reales_por_clase"`
+	ProbClaseAlta   float64 `json:"prob_clase_alta" bson:"prob_clase_alta"` // promedio ponderado por alumnos
+	AlumnosAlta     int     `json:"alumnos_clase_alta" bson:"alumnos_clase_alta"`
+	// AltaEsperados = probabilidad de la clase alta × alumnos: cuántos alumnos
+	// se espera que estén en grupos de la clase alta. Ordena el ranking.
+	AltaEsperados float64   `json:"alumnos_alta_esperados" bson:"alumnos_alta_esperados"`
+	ModeloID      string    `json:"modelo_id" bson:"modelo_id"`
+	Actualizado   time.Time `json:"actualizado" bson:"actualizado"`
 }
 
 type Usuario struct {
@@ -92,6 +98,42 @@ type Usuario struct {
 	Sal    string    `json:"-" bson:"sal"`
 	Rol    string    `json:"rol" bson:"rol"` // admin o analista
 	Creado time.Time `json:"creado" bson:"creado"`
+}
+
+// Impacto resume a cuántos alumnos alcanza el modelo si una UGEL visita los
+// colegios en el orden del ranking. Responde la pregunta social del proyecto.
+type Impacto struct {
+	Objetivo        string         `json:"objetivo" bson:"objetivo"`
+	ModeloID        string         `json:"modelo_id" bson:"modelo_id"`
+	ClaseAlta       string         `json:"clase_alta" bson:"clase_alta"` // Riesgo alto o Logro bajo
+	Colegios        int            `json:"colegios" bson:"colegios"`
+	Alumnos         int            `json:"alumnos" bson:"alumnos"`
+	AltaPredichos   int            `json:"alumnos_alta_predichos" bson:"alumnos_alta_predichos"`
+	AltaReales      int            `json:"alumnos_alta_reales" bson:"alumnos_alta_reales"`
+	ColegiosConAlta int            `json:"colegios_con_alta" bson:"colegios_con_alta"`
+	PorGestion      []GrupoImpacto `json:"por_gestion" bson:"por_gestion"`
+	PorNivel        []GrupoImpacto `json:"por_nivel" bson:"por_nivel"`
+	Curva           []PuntoCurva   `json:"curva" bson:"curva"`
+}
+
+type GrupoImpacto struct {
+	Grupo         string `json:"grupo" bson:"grupo"`
+	Colegios      int    `json:"colegios" bson:"colegios"`
+	Alumnos       int    `json:"alumnos" bson:"alumnos"`
+	AltaPredichos int    `json:"alumnos_alta_predichos" bson:"alumnos_alta_predichos"`
+	AltaReales    int    `json:"alumnos_alta_reales" bson:"alumnos_alta_reales"`
+}
+
+// PuntoCurva: si se visita el PctColegios% de los colegios, qué porcentaje de
+// los alumnos que de verdad estuvieron en la clase alta se alcanza, siguiendo
+// el ranking del modelo, eligiendo colegios al azar o visitando primero los
+// más grandes.
+type PuntoCurva struct {
+	PctColegios float64 `json:"pct_colegios" bson:"pct_colegios"`
+	Colegios    int     `json:"colegios" bson:"colegios"`
+	Modelo      float64 `json:"pct_modelo" bson:"pct_modelo"`
+	Azar        float64 `json:"pct_azar" bson:"pct_azar"`
+	PorTamano   float64 `json:"pct_por_tamano" bson:"pct_por_tamano"`
 }
 
 type Log struct {
@@ -116,8 +158,11 @@ type Store interface {
 	GuardarColegios(ctx context.Context, objetivo string, cs []Colegio) error
 	Colegios(ctx context.Context, objetivo string, codMod int) ([]Colegio, error)
 	Ranking(ctx context.Context, objetivo string, limite int) ([]Colegio, error)
+	// BuscarColegios busca por parte del nombre, sin distinguir mayúsculas.
+	BuscarColegios(ctx context.Context, objetivo, texto string, limite int) ([]Colegio, error)
 	Usuario(ctx context.Context, nombre string) (*Usuario, error)
 	GuardarUsuario(ctx context.Context, u *Usuario) error
+	Usuarios(ctx context.Context) ([]Usuario, error)
 	GuardarLog(ctx context.Context, l Log) error
 	Logs(ctx context.Context, limite int) ([]Log, error)
 	Close(ctx context.Context) error

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -125,7 +126,7 @@ func (s *Server) handleEntrenar(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	go s.runTraining(e, req)
+	go s.runTraining(e, req, cluster.RequestID(r.Context()))
 	writeJSON(w, http.StatusAccepted, map[string]any{
 		"id": e.ID, "estado": e.Estado,
 		"mensaje": "entrenamiento iniciado: sigue el progreso en /ws o en GET /api/entrenamientos/" + e.ID,
@@ -133,7 +134,7 @@ func (s *Server) handleEntrenar(w http.ResponseWriter, r *http.Request) {
 }
 
 // runTraining entrena en segundo plano, avisa por WebSocket y guarda modelo, métricas y riesgo.
-func (s *Server) runTraining(e *store.Entrenamiento, req entrenarReq) {
+func (s *Server) runTraining(e *store.Entrenamiento, req entrenarReq, reqID string) {
 	defer s.training.Store(false)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
@@ -146,7 +147,7 @@ func (s *Server) runTraining(e *store.Entrenamiento, req entrenarReq) {
 		s.hub.Broadcast(map[string]any{"tipo": "entrenamiento_fin", "id": e.ID, "estado": e.Estado, "error": e.Error})
 	}
 
-	s.logEvent("info", "entrenamiento", fmt.Sprintf("%s iniciado por %s (%d árboles, modo %s)", e.ID, e.Usuario, e.Arboles, e.Modo))
+	s.logEvent("info", "entrenamiento", fmt.Sprintf("%s iniciado por %s (%d árboles, modo %s, petición id=%s)", e.ID, e.Usuario, e.Arboles, e.Modo, reqID))
 	s.hub.Broadcast(map[string]any{"tipo": "entrenamiento_inicio", "id": e.ID, "objetivo": e.Objetivo, "modo": e.Modo, "arboles": e.Arboles})
 
 	td, err := s.targetData(req.Objetivo)
@@ -196,6 +197,8 @@ func (s *Server) runTraining(e *store.Entrenamiento, req entrenarReq) {
 		log.Printf("[api] no se pudo guardar el modelo en disco: %v", err)
 	}
 	s.warmRanking(ctx, model.Objetivo, model.ID)
+	imp := computeImpact(colegios, model.Objetivo, model.ID, td.clases[len(td.clases)-1])
+	s.setImpact(ctx, imp, true)
 	s.mu.Lock()
 	s.models[model.Objetivo] = model
 	s.mu.Unlock()
@@ -205,6 +208,7 @@ func (s *Server) runTraining(e *store.Entrenamiento, req entrenarReq) {
 	e.Nodos = out.Nodes
 	e.CargaMs, e.EntrenamientoMs, e.TotalMs = out.CargaMs, out.TrainMs, out.TotalMs
 	e.Reasignados, e.Reportes = out.Reasignados, out.Reports
+	e.Impacto = imp
 	e.Metricas = &store.Metricas{
 		Clases: td.clases, Exactitud: rep.Accuracy, ExactitudBalanceada: rep.BalancedAcc, F1Macro: rep.MacroF1,
 		Precision: rep.Precision, Recall: rep.Recall, F1: rep.F1, Matriz: rep.Confusion,
@@ -276,6 +280,7 @@ func (s *Server) aggregateSchools(m *Model, td *targetData, votes [][]int, pred 
 			c = &store.Colegio{
 				ID: fmt.Sprintf("%s:%d-%d", m.Objetivo, kk.cod, kk.anexo), Objetivo: m.Objetivo,
 				CodMod: kk.cod, Anexo: kk.anexo, Anio: s.ds.Year[row], Gestion: gestiones[g],
+				Nombre: s.schoolName(kk.cod, kk.anexo), Nivel: nivelNombre(x[1]),
 				AlumnosPorClase: make([]int, k), RealesPorClase: make([]int, k),
 				ModeloID: m.ID, Actualizado: time.Now(),
 			}
@@ -294,6 +299,7 @@ func (s *Server) aggregateSchools(m *Model, td *targetData, votes [][]int, pred 
 			c.ProbClaseAlta = probSum[kk] / float64(c.Alumnos)
 		}
 		c.AlumnosAlta = c.AlumnosPorClase[alta]
+		c.AltaEsperados = math.Round(probSum[kk]*10) / 10
 		out = append(out, *c)
 	}
 	return out

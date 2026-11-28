@@ -11,9 +11,9 @@ func TestMemoryRanking(t *testing.T) {
 	m := NewMemory()
 	ctx := context.Background()
 	m.GuardarColegios(ctx, "riesgo", []Colegio{
-		{ID: "a", CodMod: 1, AlumnosAlta: 5},
-		{ID: "b", CodMod: 2, AlumnosAlta: 50},
-		{ID: "c", CodMod: 2, Anexo: 1, AlumnosAlta: 20},
+		{ID: "a", CodMod: 1, AltaEsperados: 5},
+		{ID: "b", CodMod: 2, AltaEsperados: 50},
+		{ID: "c", CodMod: 2, Anexo: 1, AltaEsperados: 20},
 	})
 	r, _ := m.Ranking(ctx, "riesgo", 2)
 	if len(r) != 2 || r[0].ID != "b" || r[1].ID != "c" {

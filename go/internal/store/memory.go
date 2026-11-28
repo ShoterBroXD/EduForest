@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -127,13 +128,33 @@ func (m *Memory) Ranking(_ context.Context, objetivo string, limite int) ([]Cole
 	m.mu.RLock()
 	out := append([]Colegio(nil), m.colegios[objetivo]...)
 	m.mu.RUnlock()
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].AlumnosAlta != out[j].AlumnosAlta {
-			return out[i].AlumnosAlta > out[j].AlumnosAlta
-		}
-		return out[i].ProbClaseAlta > out[j].ProbClaseAlta
-	})
+	sort.Slice(out, func(i, j int) bool { return out[i].AltaEsperados > out[j].AltaEsperados })
 	return out[:min(limite, len(out))], nil
+}
+
+func (m *Memory) BuscarColegios(_ context.Context, objetivo, texto string, limite int) ([]Colegio, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	texto = strings.ToLower(texto)
+	out := []Colegio{}
+	for _, c := range m.colegios[objetivo] {
+		if strings.Contains(strings.ToLower(c.Nombre), texto) {
+			out = append(out, c)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].AltaEsperados > out[j].AltaEsperados })
+	return out[:min(limite, len(out))], nil
+}
+
+func (m *Memory) Usuarios(context.Context) ([]Usuario, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make([]Usuario, 0, len(m.usuarios))
+	for _, u := range m.usuarios {
+		out = append(out, u)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Creado.Before(out[j].Creado) })
+	return out, nil
 }
 
 func (m *Memory) Usuario(_ context.Context, nombre string) (*Usuario, error) {

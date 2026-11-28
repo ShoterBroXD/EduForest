@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -130,6 +131,8 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	u, err := s.store.Usuario(r.Context(), req.Usuario)
 	if err != nil || !checkPassword(u, req.Clave) {
+		// Se registra el intento fallido (sin la clave) para detectar ataques.
+		go s.logEvent("alerta", "seguridad", fmt.Sprintf("login fallido para %q desde %s", req.Usuario, clientIP(r)))
 		writeError(w, http.StatusUnauthorized, "usuario o clave incorrectos")
 		return
 	}

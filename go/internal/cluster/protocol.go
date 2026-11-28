@@ -63,6 +63,7 @@ type TrainResult struct {
 type PredictTask struct {
 	ModelID string      `json:"model_id"`
 	X       [][]float64 `json:"x"`
+	ReqID   string      `json:"req_id,omitempty"` // X-Request-ID de la petición que originó la consulta
 }
 
 // PredictVotes son los votos de los árboles de un nodo: Votes[fila][clase].

@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
@@ -70,8 +71,20 @@ func main() {
 		log.Printf("[api] REDIS_ADDR vacío: se usa una caché en memoria")
 	}
 
+	// Los nombres de los colegios se leen del CSV del año de prueba en una
+	// goroutine aparte, mientras se carga el dataset completo.
+	dataDir := getEnv("DATA_DIR", "../data/siagie")
+	namesCh := make(chan map[dataset.SchoolKey]string, 1)
+	go func() {
+		names, err := dataset.LoadSchoolNames(filepath.Join(dataDir, "siagie_matricula_2024.csv"))
+		if err != nil {
+			log.Printf("[api] no se pudieron leer los nombres de los colegios: %v", err)
+		}
+		namesCh <- names
+	}()
+
 	t := time.Now()
-	ds, rep, err := dataset.LoadDir(getEnv("DATA_DIR", "../data/siagie"), 3, runtime.NumCPU())
+	ds, rep, err := dataset.LoadDir(dataDir, 3, runtime.NumCPU())
 	if err != nil {
 		log.Fatalf("[api] %v", err)
 	}
@@ -89,6 +102,9 @@ func main() {
 		AdminPass:  getEnv("ADMIN_PASSWORD", "admin123"),
 		CORSOrigin: getEnv("CORS_ORIGIN", "*"),
 	}, st, cache, cluster.NewCoordinator(nodes), ds)
+	names := <-namesCh
+	srv.SetSchoolNames(names)
+	log.Printf("[api] nombres de %d colegios cargados", len(names))
 	srv.Start(ctx)
 
 	httpSrv := &http.Server{Addr: getEnv("API_ADDR", ":8080"), Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second}

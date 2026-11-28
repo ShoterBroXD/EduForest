@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"regexp"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -46,7 +47,7 @@ func (m *Mongo) indexes(ctx context.Context) error {
 		"colegios": {
 			{Keys: bson.D{{Key: "objetivo", Value: 1}, {Key: "cod_mod", Value: 1}}},
 			// Cubre el filtro y el orden completo del ranking, así Mongo no ordena en memoria.
-			{Keys: bson.D{{Key: "objetivo", Value: 1}, {Key: "alumnos_clase_alta", Value: -1}, {Key: "prob_clase_alta", Value: -1}}},
+			{Keys: bson.D{{Key: "objetivo", Value: 1}, {Key: "alumnos_alta_esperados", Value: -1}}},
 		},
 		"entrenamientos": {{Keys: bson.D{{Key: "inicio", Value: -1}}}},
 		"logs":           {{Keys: bson.D{{Key: "fecha", Value: -1}}}},
@@ -132,8 +133,18 @@ func (m *Mongo) Colegios(ctx context.Context, objetivo string, codMod int) ([]Co
 }
 
 func (m *Mongo) Ranking(ctx context.Context, objetivo string, limite int) ([]Colegio, error) {
-	opts := options.Find().SetSort(bson.D{{Key: "alumnos_clase_alta", Value: -1}, {Key: "prob_clase_alta", Value: -1}}).SetLimit(int64(limite))
+	opts := options.Find().SetSort(bson.D{{Key: "alumnos_alta_esperados", Value: -1}}).SetLimit(int64(limite))
 	return find[Colegio](ctx, m.db.Collection("colegios"), bson.M{"objetivo": objetivo}, opts)
+}
+
+func (m *Mongo) BuscarColegios(ctx context.Context, objetivo, texto string, limite int) ([]Colegio, error) {
+	filter := bson.M{"objetivo": objetivo, "nombre": bson.M{"$regex": regexp.QuoteMeta(texto), "$options": "i"}}
+	opts := options.Find().SetSort(bson.D{{Key: "alumnos_alta_esperados", Value: -1}}).SetLimit(int64(limite))
+	return find[Colegio](ctx, m.db.Collection("colegios"), filter, opts)
+}
+
+func (m *Mongo) Usuarios(ctx context.Context) ([]Usuario, error) {
+	return find[Usuario](ctx, m.db.Collection("usuarios"), bson.M{}, options.Find().SetSort(bson.D{{Key: "creado", Value: 1}}))
 }
 
 func (m *Mongo) Usuario(ctx context.Context, nombre string) (*Usuario, error) {
